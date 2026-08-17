@@ -114,7 +114,7 @@ cd server
 node seed/seed.js
 ```
 
-Creates 5 teams, 12 services, 10 APIs, 18 API versions, and 63 relationships. Fully idempotent — safe to re-run.
+Creates 20 teams, 94 services, 62 APIs, 112 API versions, and 789 relationships. Fully idempotent — safe to re-run.
 
 ### Run
 
@@ -181,30 +181,32 @@ Output in `client/dist/` — static files deployable to any static host.
 
 | Entity | Count |
 |---|---|
-| Teams | 5 |
-| Services | 12 |
-| APIs | 10 |
-| API Versions | 18 |
+| Teams | 20 |
+| Services | 94 |
+| APIs | 62 |
+| API Versions | 112 |
 
 | Relationship | Count |
 |---|---|
-| OWNS | 11 |
-| CALLS | 21 |
-| DEPENDS_ON | 8 |
-| HAS_VERSION | 18 |
-| REPLACED_BY | 5 |
+| OWNS | 94 |
+| CALLS | 239 |
+| USES_VERSION | 239 |
+| DEPENDS_ON | 69 |
+| HAS_VERSION | 112 |
+| REPLACED_BY | 50 |
 
 ### Verified Dependency Chains
 
 ```
-Cart ──DEPENDS_ON──► Checkout ──DEPENDS_ON──► Order ──CALLS──► Payment API (3 hops)
-Metrics ──DEPENDS_ON──► Dashboard ──DEPENDS_ON──► Reporting ──CALLS──► Analytics API (3 hops)
-Session ──DEPENDS_ON──► Profile ──CALLS──► Auth API (2 hops)
+Cart → Checkout → Order → Payment Processing → Payment Fraud (4 hops)
+Metrics Collector → Dashboard → Reporting → Analytics Ingestion → Data Pipeline (4 hops)
+MFA → Auth → User Profile → OAuth (3 hops)
+Invoice → Billing → Payment Processing → Ledger (3 hops)
 ```
 
 ## CogODB Compatibility
 
-CogODB does not support `shortestPath()`, `length(path)`, or `size(path)`. Variable-length paths (`*1..N`) and standard Cypher operations (MATCH, MERGE, COLLECT, UNWIND, OPTIONAL MATCH) are supported. See `docs/3000_cognodb_compatibility.md` for details.
+CogODB does not support `shortestPath()`, `length(path)`, or `size(path)`. Variable-length paths (`*1..N`) and standard Cypher operations (MATCH, MERGE, COLLECT, UNWIND, OPTIONAL MATCH) are supported. See `docs/1300_cognodb_compatibility.md` for details.
 
 ## Documentation
 
@@ -212,16 +214,16 @@ Internal documentation is in the `docs/` directory using a numbered naming conve
 
 | File | Topic |
 |---|---|
-| `0000_problem_statement.md` | Problem definition and proposed solution |
-| `1000_requirement.md` | Full requirements specification |
-| `2000_implementation_plan.md` | Implementation plan and phases |
-| `3000_cognodb_compatibility.md` | CogODB compatibility notes |
-| `4000_architecture_overview.md` | System architecture |
-| `5000_graph_data_model.md` | Graph data model documentation |
-| `6000_cypher_query_layer.md` | Cypher query documentation |
-| `7000_rest_api_layer.md` | REST API documentation |
-| `8000_api_browsing_pages.md` | API browsing UI documentation |
-| `9000_blast_radius_visualization.md` | Blast radius visualization documentation |
-| `10000_service_team_pages.md` | Service and team pages documentation |
-| `1100_graph_visualization_redesign.md` | Graph layout redesign documentation |
-| `1200_blast_radius_redesign.md` | Blast radius page redesign documentation |
+| `1000_problem_statement.md` | Problem definition and proposed solution |
+| `1100_requirement.md` | Full requirements specification |
+| `1200_implementation_plan.md` | Implementation plan and phases |
+| `1300_cognodb_compatibility.md` | CogODB compatibility notes |
+| `1400_architecture_overview.md` | System architecture |
+| `1500_graph_data_model.md` | Graph data model documentation |
+| `1600_cypher_query_layer.md` | Cypher query documentation |
+| `1700_rest_api_layer.md` | REST API documentation |
+| `1800_api_browsing_pages.md` | API browsing UI documentation |
+| `1900_blast_radius_visualization.md` | Blast radius visualization documentation |
+| `2000_graph_visualization_redesign.md` | Graph layout redesign documentation |
+| `2100_blast_radius_redesign.md` | Blast radius page redesign documentation |
+| `2200_service_team_pages.md` | Service and team pages documentation |
