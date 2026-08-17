@@ -70,7 +70,7 @@ server/src/
 
 **Connection:** Configured via environment variables (`COGNODB_URI`, `COGNODB_USERNAME`, `COGNODB_PASSWORD`). Never committed to source control.
 
-**Compatibility note:** CogODB does not support `shortestPath()`, `length(path)`, or `size(path)`. See `3000_cognodb_compatibility.md` for details and workarounds.
+**Compatibility note:** CogODB does not support `shortestPath()`, `length(path)`, or `size(path)`. See `1300_cognodb_compatibility.md` for details and workarounds.
 
 ## 6. Data Flow
 

@@ -120,7 +120,7 @@ CogODB does not support all Cypher functions available in Neo4j. The following f
 - `length(path)`
 - `size(path)`
 
-Variable-length relationship patterns (`[:DEPENDS_ON*1..4]`), `collect()`, `count()`, `OPTIONAL MATCH`, `UNWIND`, and parameterized queries all work correctly. See `3000_cognodb_compatibility.md` for full details.
+Variable-length relationship patterns (`[:DEPENDS_ON*1..4]`), `collect()`, `count()`, `OPTIONAL MATCH`, `UNWIND`, and parameterized queries all work correctly. See `1300_cognodb_compatibility.md` for full details.
 
 ---
 
