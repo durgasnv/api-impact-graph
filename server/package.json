@@ -1,0 +1,23 @@
+{
+  "name": "api-impact-graph-server",
+  "version": "1.0.0",
+  "description": "Backend for API Impact Graph",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-validator": "^7.2.1",
+    "neo4j-driver": "^5.28.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}
