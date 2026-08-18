@@ -1,20 +1,44 @@
 # API Impact Graph
 
-Full-stack app modeling APIs, services, teams, and dependencies as a graph. Explore blast radius, dependency chains, and team ownership when an API changes.
+A full-stack web application that models APIs, services, teams, and their dependencies as a graph, enabling engineers to explore blast radius, dependency chains, and team ownership when an API or service changes.
+
+---
+
+## Use Case
+
+In a microservices architecture, a single API change can cascade across dozens of services. Today, answering *"If I deprecate the Payment API, which services break? Which teams are affected?"* requires manually tracing dependency chains across documentation and tribal knowledge.
+
+API Impact Graph solves this by storing APIs, services, teams, and dependencies as a graph. Users can instantly trace blast radius, identify affected teams, and make informed decisions about API changes.
+
+---
 
 ## Why a Graph Database?
 
-"Which services break if I deprecate this API?" requires multi-hop traversal over a dependency network — a natural fit for a graph database. cognodb stores the data, accessed via the Neo4j Bolt driver with openCypher.
+The core questions are relationship-oriented: *"What depends on this API?"* and *"Which teams are affected?"* These require **multi-hop traversal** over a dependency network — finding all services affected through chains of dependencies, not just direct callers.
 
-## Stack
+A relational database would require recursive CTEs or multiple self-joins that degrade exponentially with depth. A graph database traverses edges natively — a 4-hop dependency chain is a single Cypher query:
 
-| Layer | Tech |
-|---|---|
-| Frontend | React 19, Vite, React Router, react-force-graph-2d |
-| Backend | Express.js, express-validator |
-| Database | cognodb (Bolt protocol, openCypher) |
+```cypher
+MATCH (affected:Service)-[:DEPENDS_ON*1..4]->(origin:Service {id: $id})
+RETURN DISTINCT affected
+```
 
-## Graph Model
+**cognodb** is used as the graph database, accessed via the official Neo4j Bolt driver using openCypher.
+
+---
+
+## Data Model
+
+### Node Types
+
+| Node | Properties | Purpose |
+|---|---|---|
+| **Team** | id, name | Engineering team |
+| **Service** | id, name, description, status | Software service |
+| **API** | id, name, description, domain | Logical API |
+| **APIVersion** | id, version, status, releaseDate | Concrete API version |
+
+### Relationships
 
 ```
 Team ──OWNS──► Service ──CALLS──► API ──HAS_VERSION──► APIVersion
@@ -24,73 +48,157 @@ Team ──OWNS──► Service ──CALLS──► API ──HAS_VERSION─�
               Service                               APIVersion
 ```
 
-| Relationship | Meaning |
-|---|---|
-| `OWNS` | Team owns a service |
-| `CALLS` | Service calls an API |
-| `USES_VERSION` | Service uses a specific API version |
-| `DEPENDS_ON` | Service depends on another service |
-| `HAS_VERSION` | API has a version |
-| `REPLACED_BY` | Deprecated version replaced by newer one |
+| Relationship | Direction | Meaning |
+|---|---|---|
+| `OWNS` | Team → Service | Team is responsible for this service |
+| `CALLS` | Service → API | Service consumes this API |
+| `USES_VERSION` | Service → APIVersion | Service uses a specific version |
+| `DEPENDS_ON` | Service → Service | Service depends on another service |
+| `HAS_VERSION` | API → APIVersion | API has this version |
+| `REPLACED_BY` | APIVersion → APIVersion | Deprecated version replaced by newer |
 
-**Blast radius:** If B fails and `A -[:DEPENDS_ON]-> B`, then A is affected. Traversal follows incoming edges from the target API version.
+**Blast radius semantics:** `A -[:DEPENDS_ON]-> B` means A depends on B. If B fails, A is affected. Blast-radius traversal follows incoming `USES_VERSION` edges to find direct consumers, then incoming `DEPENDS_ON` edges up to 4 hops for indirect dependents.
 
-## Setup
+---
+
+## Setup and Run
+
+### Prerequisites
+
+- Node.js >= 18
+- A cognodb instance (see below)
+
+### Creating a cognodb Instance
+
+1. Go to [cognodb.com](https://cognodb.com) and create an account
+2. Create a new database instance
+3. Copy the **Bolt URI**, **username**, and **password** from the connection details
+4. These go into `server/.env`
+
+### Environment
 
 ```bash
-cp .env.example server/.env   # add cognodb credentials
-cd server && npm install && node seed/seed.js   # seed 20 teams, 94 services, 70+ APIs, 789 relationships
-npm run dev   # server on :3001
-cd ../client && npm install && npm run dev   # Vite on :5173, proxies /api → :3001
+cp .env.example server/.env
 ```
 
-## API Endpoints
+Edit `server/.env`:
 
-| Endpoint | Description |
-|---|---|
-| `GET /api/dashboard` | Stats + overview graph |
-| `GET /api/apis` | All APIs with versions |
-| `GET /api/apis/:id` | API detail + versions |
-| `GET /api/apis/:id/consumers` | Direct consumer services |
-| `GET /api/apis/:id/blast-radius` | Affected services/teams (`?versionId=` optional) |
-| `GET /api/services` | All services |
-| `GET /api/services/:id` | Service detail (teams, APIs, deps) |
-| `GET /api/services/:id/dependencies` | Multi-hop downstream dependents |
-| `GET /api/services/:id/paths/:targetId` | Dependency path between entities |
-| `GET /api/teams` | All teams with services |
-| `GET /api/teams/:id` | Team detail |
+| Variable | Description | Example |
+|---|---|---|
+| `COGNODB_URI` | Bolt connection URI | `bolt+s://db-xxx.databases.cognodb.com` |
+| `COGNODB_USERNAME` | Database username | `cognodb` |
+| `COGNODB_PASSWORD` | Database password | (your password) |
 
-## Key Features
+### Seed Data
 
-- **Blast radius visualization** — interactive force-directed graph showing direct/indirect consumers, team ownership, fullscreen mode with slide-in details drawer
-- **Dashboard** — aggregate stats, dependency overview graph of top 10 APIs, quick navigation
-- **Service detail** — teams, APIs called, direct dependencies, multi-hop downstream dependents
-- **API detail** — version management, replacement tracking, per-version blast radius
-- **Dark mode** — full theme with localStorage persistence
-- **Responsive** — works on desktop, tablet, and mobile
-
-## Seed Data
-
-| Entity | Count |
-|---|---|
-| Teams | 20 |
-| Services | 94 |
-| APIs | 70 |
-| API Versions | 112 |
-| Relationships | 789 |
-
-Verified dependency chains go up to 4 hops:
-```
-Cart → Checkout → Order → Payment Processing → Payment Fraud
-Invoice → Billing → Payment Processing → Ledger
-Anomaly Detection → Model Serving → Feature Store
+```bash
+cd server
+node seed/seed.js
 ```
 
-## cognodb Compatibility
+Creates 20 teams, 94 services, 70+ APIs, 112 API versions, and 789 relationships. Idempotent — safe to re-run.
 
-cognodb doesn't support `shortestPath()`, `length(path)`, or `size(path)`. Variable-length paths (`*1..N`) and standard Cypher all work. See `docs/1300_cognodb_compatibility.md`.
+### Run
 
-## Docs
+**Backend** (port 3001):
+```bash
+cd server && npm install && npm run dev
+```
+
+**Frontend** (port 5173, proxies /api to :3001):
+```bash
+cd client && npm install && npm run dev
+```
+
+**Production build:**
+```bash
+cd client && npm run build   # outputs to client/dist/
+cd ../server && npm start     # serves API + static files
+```
+
+---
+
+## Main Queries Explained
+
+### Q-04: Blast Radius
+
+The core query. Given an API version, finds all directly and indirectly affected services:
+
+```cypher
+-- Direct consumers
+MATCH (av:APIVersion {id: $versionId})<-[:USES_VERSION]-(direct:Service)
+-- Indirect dependents (1-4 hops)
+OPTIONAL MATCH (indirect:Service)-[:DEPENDS_ON*1..4]->(direct)
+-- Resolve team ownership
+WITH collect(DISTINCT direct) + collect(DISTINCT indirect) AS allServices
+UNWIND allServices AS svc
+OPTIONAL MATCH (t:Team)-[:OWNS]->(svc)
+RETURN collect(DISTINCT svc) AS services, collect(DISTINCT t) AS teams
+```
+
+### Q-03: Multi-Hop Dependencies
+
+Finds all services that would break if a given service fails:
+
+```cypher
+MATCH (affected:Service)-[:DEPENDS_ON*1..4]->(origin:Service {id: $id})
+RETURN DISTINCT affected
+```
+
+### Q-05: Dependency Path
+
+Finds the shortest path between any two entities (workaround — cognodb doesn't support `shortestPath()`):
+
+```cypher
+MATCH path = (source {id: $sourceId})-[:DEPENDS_ON|CALLS|USES_VERSION|HAS_VERSION|REPLACED_BY*1..4]->(target {id: $targetId})
+RETURN path LIMIT 10
+```
+
+The service layer selects the shortest from candidate paths in Node.js.
+
+### Q-08: Dashboard Aggregates
+
+Counts across all entity types:
+
+```cypher
+OPTIONAL MATCH (a:API) WITH count(a) AS apiCount
+OPTIONAL MATCH (s:Service) WITH apiCount, count(s) AS serviceCount
+OPTIONAL MATCH (t:Team) WITH apiCount, serviceCount, count(t) AS teamCount
+OPTIONAL MATCH (av:APIVersion {status: 'deprecated'})
+RETURN apiCount, serviceCount, teamCount, count(av) AS deprecatedCount
+```
+
+---
+
+## Screenshots
+
+### Dashboard
+![Dashboard](images/dashboard.png)
+
+### APIs List
+![APIs](images/apis.png)
+
+### API Detail
+![API Detail](images/api.png)
+
+### Blast Radius Graph
+![Blast Radius Graph](images/graph.png)
+
+### Services List
+![Services](images/services.png)
+
+### Service Detail
+![Service Detail](images/services_onclick.png)
+
+### Teams List
+![Teams](images/teams.png)
+
+### Team Detail
+![Team Detail](images/teams_onclick.png)
+
+---
+
+## Documentation
 
 | File | Topic |
 |---|---|
@@ -107,7 +215,7 @@ cognodb doesn't support `shortestPath()`, `length(path)`, or `size(path)`. Varia
 | `2000` | Graph visualization redesign |
 | `2100` | Blast radius redesign |
 | `2200` | Service & team pages |
-| `2300` | Dashboard page (learning log) |
+| `2300` | Dashboard (learning log) |
 | `2400` | Dark mode & responsive (learning log) |
 | `2500` | Seed data design (learning log) |
 | `2600` | Error handling (learning log) |
