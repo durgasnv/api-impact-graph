@@ -7,6 +7,39 @@ const LABEL_OFFSET = 6;
 const SPACING_X = 200;
 const SPACING_Y = 160;
 const LINK_HIT_PAD = 6;
+const NODE_CLICK_PAD = 10;
+
+function nodePosition(node) {
+  return { x: node.x ?? node.fx ?? 0, y: node.y ?? node.fy ?? 0 };
+}
+
+function findNodeAt(x, y, nodes) {
+  let best = null;
+  let bestDist = Infinity;
+  for (const node of nodes) {
+    const pos = nodePosition(node);
+    const r = (NODE_RADIUS[node.type] || 8) + NODE_CLICK_PAD;
+    const dist = Math.hypot(pos.x - x, pos.y - y);
+    if (dist <= r && dist < bestDist) {
+      best = node;
+      bestDist = dist;
+    }
+  }
+  return best;
+}
+
+function toNodePayload(node) {
+  if (!node) return null;
+  return { id: node.id, label: node.label, type: node.type };
+}
+
+function eventToGraphCoords(fg, event, containerEl) {
+  if (!fg?.screen2GraphCoords) return null;
+  const canvas = containerEl?.querySelector?.("canvas");
+  const rect = (canvas || containerEl)?.getBoundingClientRect?.();
+  if (!rect) return null;
+  return fg.screen2GraphCoords(event.clientX - rect.left, event.clientY - rect.top);
+}
 
 function applyLayout(nodes, links) {
   const levels = new Map();
@@ -173,31 +206,41 @@ function drawLink(link, ctx, hoveredLinkId) {
 }
 
 const GraphVisualization = forwardRef(function GraphVisualization(
-  { nodes, links, onNodeClick, onLinkHover, selectedNode }, ref
+  { nodes, links, onNodeClick, onLinkHover, selectedNode, fillParent = false }, ref
 ) {
   const fgRef = useRef(null);
   const containerRef = useRef(null);
+  const pointerDownRef = useRef(null);
   const [hoveredLink, setHoveredLink] = useState(null);
   const [containerWidth, setContainerWidth] = useState(700);
+  const [containerHeight, setContainerHeight] = useState(500);
   const [, forceRender] = useState(0);
+
+  const height = useMemo(() => canvasHeight(nodes), [nodes]);
+  const graphData = useMemo(() => ({ nodes, links }), [nodes, links]);
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const ro = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect.width;
-      if (w) setContainerWidth(w);
+      const cr = entries[0]?.contentRect;
+      if (!cr) return;
+      if (cr.width > 0) setContainerWidth((w) => (Math.abs(w - cr.width) > 1 ? cr.width : w));
+      if (cr.height > 0) setContainerHeight((h) => (Math.abs(h - cr.height) > 1 ? cr.height : h));
     });
     ro.observe(el);
     setContainerWidth(el.offsetWidth || 700);
+    setContainerHeight(el.offsetHeight || height);
     return () => ro.disconnect();
-  }, []);
+  }, [height, fillParent]);
 
   useMemo(() => {
     if (nodes.length) applyLayout(nodes, links);
   }, [nodes, links]);
 
-  const height = useMemo(() => canvasHeight(nodes), [nodes]);
+  useEffect(() => {
+    forceRender((n) => n + 1);
+  }, [selectedNode]);
 
   useImperativeHandle(ref, () => ({
     zoomIn:  () => fgRef.current?.zoom((z) => z * 1.3),
@@ -209,14 +252,55 @@ const GraphVisualization = forwardRef(function GraphVisualization(
     fgRef.current?.zoomToFit(400, 60);
   }, []);
 
+  const onNodeClickRef = useRef(onNodeClick);
+  onNodeClickRef.current = onNodeClick;
+
+  const emitNodeClick = useCallback((node) => {
+    if (onNodeClickRef.current) onNodeClickRef.current(toNodePayload(node));
+  }, []);
+
   const handleNodeClick = useCallback((node) => {
-    if (onNodeClick) onNodeClick(node);
-  }, [onNodeClick]);
+    emitNodeClick(node);
+  }, [emitNodeClick]);
+
+  const handleLinkClick = useCallback((link, event) => {
+    const pt = eventToGraphCoords(fgRef.current, event, containerRef.current);
+    if (!pt) return;
+    const nearby = findNodeAt(pt.x, pt.y, nodes);
+    if (nearby) emitNodeClick(nearby);
+  }, [emitNodeClick, nodes]);
 
   const handleLinkHover = useCallback((link) => {
-    setHoveredLink(link ? link.id : null);
+    setHoveredLink(link ? (link.id ?? `${link.label}-${link.source?.id}-${link.target?.id}`) : null);
     if (onLinkHover) onLinkHover(link);
   }, [onLinkHover]);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const onPointerDown = (event) => {
+      if (event.button !== 0) return;
+      pointerDownRef.current = { x: event.clientX, y: event.clientY };
+    };
+
+    const onPointerUp = (event) => {
+      const start = pointerDownRef.current;
+      pointerDownRef.current = null;
+      if (!start || event.button !== 0) return;
+      if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 6) return;
+      const pt = eventToGraphCoords(fgRef.current, event, el);
+      if (!pt) return;
+      emitNodeClick(findNodeAt(pt.x, pt.y, nodes));
+    };
+
+    el.addEventListener("pointerdown", onPointerDown, true);
+    el.addEventListener("pointerup", onPointerUp, true);
+    return () => {
+      el.removeEventListener("pointerdown", onPointerDown, true);
+      el.removeEventListener("pointerup", onPointerUp, true);
+    };
+  }, [nodes, emitNodeClick]);
 
   if (nodes.length === 0) {
     return (
@@ -232,51 +316,41 @@ const GraphVisualization = forwardRef(function GraphVisualization(
     );
   }
 
+  const canvasH = Math.max(fillParent ? containerHeight : height, 100);
+
   return (
-    <div className="graph-container blast-graph-canvas" style={{ height }} ref={containerRef}>
+    <div
+      className="graph-container blast-graph-canvas"
+      style={fillParent ? { height: "100%", width: "100%", minHeight: 0, flex: 1 } : { height }}
+      ref={containerRef}
+    >
       <ForceGraph2D
         ref={fgRef}
-        graphData={{ nodes, links }}
+        graphData={graphData}
         nodeCanvasObject={(node, ctx, gs) => drawNode(node, ctx, gs, selectedNode?.id)}
+        nodeCanvasObjectMode={() => "replace"}
         linkCanvasObject={(link, ctx) => drawLink(link, ctx, hoveredLink)}
+        linkCanvasObjectMode={() => "replace"}
         nodePointerAreaPaint={(node, color, ctx) => {
-          const r = NODE_RADIUS[node.type] || 8;
+          const r = (NODE_RADIUS[node.type] || 8) + NODE_CLICK_PAD;
           ctx.beginPath();
-          if (node.type === "apiVersion") {
-            ctx.moveTo(node.x, node.y - r - 4);
-            ctx.lineTo(node.x + r + 4, node.y);
-            ctx.lineTo(node.x, node.y + r + 4);
-            ctx.lineTo(node.x - r - 4, node.y);
-            ctx.closePath();
-          } else if (node.type === "team") {
-            const s = (r * 1.85) + 4;
-            const rx2 = 4;
-            ctx.moveTo(node.x - s/2 + rx2, node.y - s/2);
-            ctx.lineTo(node.x + s/2 - rx2, node.y - s/2);
-            ctx.quadraticCurveTo(node.x + s/2, node.y - s/2, node.x + s/2, node.y - s/2 + rx2);
-            ctx.lineTo(node.x + s/2, node.y + s/2 - rx2);
-            ctx.quadraticCurveTo(node.x + s/2, node.y + s/2, node.x + s/2 - rx2, node.y + s/2);
-            ctx.lineTo(node.x - s/2 + rx2, node.y + s/2);
-            ctx.quadraticCurveTo(node.x - s/2, node.y + s/2, node.x - s/2, node.y + s/2 - rx2);
-            ctx.lineTo(node.x - s/2, node.y - s/2 + rx2);
-            ctx.quadraticCurveTo(node.x - s/2, node.y - s/2, node.x - s/2 + rx2, node.y - s/2);
-            ctx.closePath();
-          } else {
-            ctx.arc(node.x, node.y, r + 4, 0, 2 * Math.PI);
-          }
+          ctx.arc(node.x, node.y, r, 0, 2 * Math.PI);
           ctx.fillStyle = color;
           ctx.fill();
         }}
         onNodeClick={handleNodeClick}
+        onLinkClick={handleLinkClick}
         onLinkHover={handleLinkHover}
         onEngineStop={handleEngineStop}
+        onNodeHover={(node) => {
+          if (containerRef.current) containerRef.current.style.cursor = node ? "pointer" : "grab";
+        }}
         linkPointerAreaPaint={(link, color, ctx) => {
           const sx = link.source.x, sy = link.source.y;
           const tx = link.target.x, ty = link.target.y;
           if (sx === tx && sy === ty) return;
-          const zoom = ctx.getTransform().a || 1;
-          const srcR = (NODE_RADIUS[link.source.type] || 8) + 4;
-          const tgtR = (NODE_RADIUS[link.target.type] || 8) + 4;
+          const srcR = (NODE_RADIUS[link.source.type] || 8) + NODE_CLICK_PAD;
+          const tgtR = (NODE_RADIUS[link.target.type] || 8) + NODE_CLICK_PAD;
           const dx = tx - sx, dy = ty - sy;
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist === 0) return;
@@ -285,7 +359,7 @@ const GraphVisualization = forwardRef(function GraphVisualization(
           ctx.moveTo(sx + ux * srcR, sy + uy * srcR);
           ctx.lineTo(tx - ux * tgtR, ty - uy * tgtR);
           ctx.strokeStyle = color;
-          ctx.lineWidth = (LINK_HIT_PAD * 2) / zoom;
+          ctx.lineWidth = LINK_HIT_PAD;
           ctx.lineCap = "round";
           ctx.stroke();
         }}
@@ -293,8 +367,9 @@ const GraphVisualization = forwardRef(function GraphVisualization(
         d3AlphaDecay={1}
         d3VelocityDecay={1}
         width={containerWidth}
-        height={height}
+        height={canvasH}
         enableZoomPanInteraction={true}
+        enableNodeDrag={false}
       />
     </div>
   );

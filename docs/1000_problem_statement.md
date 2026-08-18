@@ -70,7 +70,7 @@ It is:
 
 A graph database is therefore a natural fit because entities can be represented as nodes and their dependencies as typed relationships. Multi-hop traversal can be performed directly over the dependency network.
 
-The application will use **CognoDB** as the graph database and access it through the official Neo4j driver using openCypher over Bolt.
+The application will use **cognodb** as the graph database and access it through the official Neo4j driver using openCypher over Bolt.
 
 ## 5. Intended Outcome
 

@@ -84,7 +84,7 @@ The Layout component was updated so the "APIs" nav link stays active when the us
 
 ## 7. Backend Warm-Up
 
-The CogODB driver connects lazily — the TCP connection only establishes on the first `session.run()`. This caused ~17s delays on the first frontend request.
+The cognodb driver connects lazily — the TCP connection only establishes on the first `session.run()`. This caused ~17s delays on the first frontend request.
 
 Fixed by adding a warm-up query in `server/src/index.js`:
 
@@ -94,7 +94,7 @@ await session.run("RETURN 1");
 await session.close();
 ```
 
-The server now logs `CogODB connected` before `Server running on port 3001`.
+The server now logs `cognodb connected` before `Server running on port 3001`.
 
 ## 8. Styling Approach
 

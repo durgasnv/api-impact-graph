@@ -41,7 +41,7 @@ async function start() {
   const session = driver.session();
   try {
     await session.run("RETURN 1");
-    console.log("CogODB connected");
+    console.log("cognodb connected");
   } finally {
     await session.close();
   }
@@ -61,6 +61,6 @@ async function start() {
 }
 
 start().catch((err) => {
-  console.error("Failed to connect to CogODB:", err.message);
+  console.error("Failed to connect to cognodb:", err.message);
   process.exit(1);
 });

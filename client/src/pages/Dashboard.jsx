@@ -1,28 +1,23 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import ForceGraph2D from "react-force-graph-2d";
-import { fetchDashboard, fetchAllApis } from "../api";
+import { fetchDashboard } from "../api";
 import StatCard from "../components/StatCard";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorBanner from "../components/ErrorBanner";
+import DashboardGraph from "../components/DashboardGraph";
 import { GRAPH_COLORS } from "../graphColors";
 
 function Dashboard() {
   const [data, setData] = useState(null);
-  const [apis, setApis] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [visible, setVisible] = useState(false);
-  const graphRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([fetchDashboard(), fetchAllApis()])
-      .then(([dash, apiList]) => {
-        if (!cancelled) {
-          setData(dash);
-          setApis(apiList);
-        }
+    fetchDashboard()
+      .then((dash) => {
+        if (!cancelled) setData(dash);
       })
       .catch(() => {
         if (!cancelled) setError("Failed to load dashboard data. Is the server running?");
@@ -36,51 +31,13 @@ function Dashboard() {
     return () => { cancelled = true; };
   }, []);
 
-  const graphData = useMemo(() => {
-    if (!apis.length) return { nodes: [], links: [] };
-    const nodes = [];
-    const links = [];
-    const apiSet = new Set();
-
-    for (const api of apis) {
-      if (!apiSet.has(api.id)) {
-        apiSet.add(api.id);
-        nodes.push({ id: api.id, label: api.name, type: "api", domain: api.domain });
-      }
-      for (const v of (api.versions || []).slice(0, 2)) {
-        const vId = v.id || `${api.id}-v${v.version}`;
-        nodes.push({ id: vId, label: `v${v.version}`, type: "apiVersion" });
-        links.push({ source: api.id, target: vId });
-      }
-    }
-
-    const sampleServices = [
-      { id: "order-service", name: "Order", apis: ["payment-api", "notification-api"] },
-      { id: "checkout-service", name: "Checkout", apis: ["payment-api", "billing-api"] },
-      { id: "auth-service", name: "Auth", apis: ["auth-api", "user-api"] },
-      { id: "gateway-service", name: "Gateway", apis: ["config-api", "logging-api"] },
-      { id: "analytics-service", name: "Analytics", apis: ["analytics-api", "metrics-api"] },
-    ];
-
-    for (const svc of sampleServices) {
-      nodes.push({ id: svc.id, label: svc.name, type: "service" });
-      for (const apiId of svc.apis) {
-        if (apiSet.has(apiId)) {
-          links.push({ source: svc.id, target: apiId });
-        }
-      }
-    }
-
-    return { nodes, links };
-  }, [apis]);
-
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorBanner message={error} />;
 
   return (
     <div className={`dashboard ${visible ? "dashboard--visible" : ""}`}>
       <section className="hero">
-        <div className="hero-badge">Powered by CogODB</div>
+        <div className="hero-badge">Powered by cognodb</div>
         <h1 className="hero-title">
           <span className="hero-title-line">API Impact</span>
           <span className="hero-title-accent">Graph</span>
@@ -144,49 +101,23 @@ function Dashboard() {
             <Link to="/apis" className="dashboard-section-link">View all →</Link>
           </div>
           <div className="dashboard-graph-card">
-            <ForceGraph2D
-              ref={graphRef}
-              graphData={graphData}
-              width={600}
-              height={320}
-              backgroundColor="transparent"
-              nodeCanvasObject={(node, ctx) => {
-                const color = node.type === "api" ? "#6366f1" : node.type === "apiVersion" ? "#7c3aed" : "#0891b2";
-                const r = node.type === "api" ? 6 : node.type === "apiVersion" ? 4 : 5;
-                ctx.beginPath();
-                ctx.arc(node.x, node.y, r, 0, 2 * Math.PI);
-                ctx.fillStyle = color;
-                ctx.fill();
-              }}
-              linkCanvasObject={(link, ctx) => {
-                const zoom = ctx.getTransform().a || 1;
-                ctx.beginPath();
-                ctx.moveTo(link.source.x, link.source.y);
-                ctx.lineTo(link.target.x, link.target.y);
-                ctx.strokeStyle = "rgba(148,163,184,0.3)";
-                ctx.lineWidth = 1 / zoom;
-                ctx.stroke();
-              }}
-              nodePointerAreaPaint={() => {}}
-              linkPointerAreaPaint={() => {}}
-              enableZoomPanInteraction={false}
-              enablePointerInteraction={false}
-              cooldownTicks={100}
-              d3AlphaDecay={0.02}
-              d3VelocityDecay={0.3}
-            />
+            <DashboardGraph graph={data.graph} />
             <div className="dashboard-graph-legend">
               <span className="dashboard-legend-item">
-                <span className="dashboard-legend-dot" style={{ background: "#6366f1" }} />
+                <span className="dashboard-legend-dot" style={{ background: GRAPH_COLORS.api.fill }} />
                 API
               </span>
               <span className="dashboard-legend-item">
-                <span className="dashboard-legend-dot" style={{ background: "#7c3aed" }} />
-                Version
-              </span>
-              <span className="dashboard-legend-item">
-                <span className="dashboard-legend-dot" style={{ background: "#0891b2" }} />
+                <span className="dashboard-legend-dot" style={{ background: GRAPH_COLORS.service.fill }} />
                 Service
+              </span>
+              <span className="dashboard-legend-item dashboard-legend-edge">
+                <span className="dashboard-legend-line dashboard-legend-line--solid" />
+                CALLS
+              </span>
+              <span className="dashboard-legend-item dashboard-legend-edge">
+                <span className="dashboard-legend-line dashboard-legend-line--dashed" />
+                DEPENDS_ON
               </span>
             </div>
           </div>

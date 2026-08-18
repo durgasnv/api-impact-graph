@@ -68,6 +68,102 @@ const EDGE_LEGEND = [
   { label: "HAS_VERSION", style: "line" },
 ];
 
+function BlastSidePanels({ selectedNode, hoveredLink, apiData, blastRadius, teamsOwnership }) {
+  return (
+    <>
+      <div className="blast-panel">
+        <h3 className="blast-panel-title">Legend</h3>
+        <div className="blast-legend-list">
+          {LEGEND_ITEMS.map((item) => (
+            <div key={item.label} className="blast-legend-item">
+              <span
+                className={`blast-legend-shape blast-legend-shape--${item.shape}`}
+                style={{ background: item.color }}
+              />
+              <span className="blast-legend-text">{item.label}</span>
+            </div>
+          ))}
+        </div>
+        <div className="blast-legend-divider" />
+        <div className="blast-legend-list">
+          {EDGE_LEGEND.map((item) => (
+            <div key={item.label} className="blast-legend-item blast-legend-edge">
+              <span className={`blast-legend-line blast-legend-line--${item.style}`} />
+              <span className="blast-legend-text">{item.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="blast-panel">
+        {selectedNode ? (
+          <>
+            <h3 className="blast-panel-title">Node Details</h3>
+            <NodeDetail
+              node={selectedNode}
+              apiData={apiData}
+              blastRadius={blastRadius}
+              teamsOwnership={teamsOwnership}
+            />
+          </>
+        ) : hoveredLink ? (
+          <>
+            <h3 className="blast-panel-title">Edge Details</h3>
+            <div className="node-detail">
+              <div className="node-detail-type-badge">
+                <span className="badge badge-muted">{hoveredLink.label}</span>
+              </div>
+              <p className="node-detail-relationship">
+                {typeof hoveredLink.source === "object" ? hoveredLink.source.label : ""}
+                <span className="node-detail-arrow">→</span>
+                {typeof hoveredLink.target === "object" ? hoveredLink.target.label : ""}
+              </p>
+            </div>
+          </>
+        ) : (
+          <>
+            <h3 className="blast-panel-title">Select a node to see details</h3>
+            <div className="node-detail-empty">
+              <div className="node-detail-empty-icon">
+                <svg width="36" height="36" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.3">
+                  <circle cx="18" cy="5" r="3"/>
+                  <circle cx="6" cy="12" r="3"/>
+                  <circle cx="18" cy="19" r="3"/>
+                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" strokeWidth="1.5"/>
+                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" strokeWidth="1.5"/>
+                </svg>
+              </div>
+              <p>No node selected</p>
+              <span>Click any node in the graph to view details</span>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="blast-panel blast-tips">
+        <h3 className="blast-panel-title">Tips</h3>
+        <ul className="blast-tips-list">
+          <li>
+            <span className="blast-tip-dot" style={{ background: GRAPH_COLORS.direct.fill }} />
+            Red nodes are services that directly use this API version
+          </li>
+          <li>
+            <span className="blast-tip-dot" style={{ background: GRAPH_COLORS.indirect.fill }} />
+            Orange nodes are services affected indirectly
+          </li>
+          <li>
+            <span className="blast-tip-dot" style={{ background: GRAPH_COLORS.team.fill }} />
+            Blue squares represent teams that own services
+          </li>
+          <li>Click any node to see more information</li>
+          <li>Use mouse wheel or +/- to zoom</li>
+          <li>Drag to pan around the graph</li>
+        </ul>
+      </div>
+    </>
+  );
+}
+
 function BlastRadius() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
@@ -81,6 +177,8 @@ function BlastRadius() {
   const [error, setError] = useState(null);
   const [selectedNode, setSelectedNode] = useState(null);
   const [hoveredLink, setHoveredLink] = useState(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -133,6 +231,35 @@ function BlastRadius() {
   const teamCount = teamsOwnership.filter((t) => t.services.some((s) => affectedServiceIds.has(s.id))).length;
   const hasGraph = blastRadius && blastRadius.services.length > 0;
 
+  const closeDrawer = () => setDrawerOpen(false);
+
+  const handleNodeClick = (node) => {
+    setSelectedNode(node);
+    if (isFullscreen && node) setDrawerOpen(true);
+  };
+
+  const toggleFullscreen = () => {
+    setIsFullscreen((prev) => !prev);
+  };
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        if (drawerOpen) { closeDrawer(); }
+        else if (isFullscreen) { setIsFullscreen(false); }
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isFullscreen, drawerOpen]);
+
+  useEffect(() => {
+    setDrawerOpen(isFullscreen);
+    if (!isFullscreen) return undefined;
+    const t = setTimeout(() => graphRef.current?.fitView(), 80);
+    return () => clearTimeout(t);
+  }, [isFullscreen]);
+
   if (loading) {
     return (
       <div className="page">
@@ -176,216 +303,193 @@ function BlastRadius() {
   if (!apiData || !version) return null;
 
   return (
-    <div className="page blast-page">
-      <Link to={`/apis/${id}`} className="back-link">
-        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-        </svg>
-        Back to {apiData.name} API
-      </Link>
-
-      <div className="blast-header">
-        <h1>Blast Radius</h1>
-        <div className="blast-header-badges">
-          <span className="badge badge-muted blast-version-badge">{apiData.name} v{version.version}</span>
-          <span className={`badge ${version.status === "active" ? "badge-active" : "badge-deprecated"}`}>
-            {version.status === "active" ? "Active" : "Deprecated"}
-          </span>
-        </div>
-      </div>
-
-      <div className="blast-summary-grid">
-        {/* Directly Affected */}
-        <div className="blast-summary-card">
-          <div className="blast-summary-icon blast-summary-icon--direct">
-            <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+    <div className={`page blast-page${isFullscreen ? " blast-page--fullscreen" : ""}`}>
+      {!isFullscreen && (
+        <>
+          <Link to={`/apis/${id}`} className="back-link">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
-          </div>
-          <div className="blast-summary-content">
-            <span className="blast-summary-value blast-summary-value--direct">{directCount}</span>
-            <span className="blast-summary-label">Directly Affected</span>
-            <span className="blast-summary-desc">Services that directly call this API</span>
-          </div>
-        </div>
+            Back to {apiData.name} API
+          </Link>
 
-        {/* Indirectly Affected */}
-        <div className="blast-summary-card">
-          <div className="blast-summary-icon blast-summary-icon--indirect">
-            <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-            </svg>
+          <div className="blast-header">
+            <h1>Blast Radius</h1>
+            <div className="blast-header-badges">
+              <span className="badge badge-muted blast-version-badge">{apiData.name} v{version.version}</span>
+              <span className={`badge ${version.status === "active" ? "badge-active" : "badge-deprecated"}`}>
+                {version.status === "active" ? "Active" : "Deprecated"}
+              </span>
+            </div>
           </div>
-          <div className="blast-summary-content">
-            <span className="blast-summary-value blast-summary-value--indirect">{indirectCount}</span>
-            <span className="blast-summary-label">Indirectly Affected</span>
-            <span className="blast-summary-desc">Services affected via dependencies</span>
-          </div>
-        </div>
 
-        {/* Teams Affected */}
-        <div className="blast-summary-card">
-          <div className="blast-summary-icon blast-summary-icon--teams">
-            <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-            </svg>
+          <div className="blast-summary-grid">
+            <div className="blast-summary-card">
+              <div className="blast-summary-icon blast-summary-icon--direct">
+                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <div className="blast-summary-content">
+                <span className="blast-summary-value blast-summary-value--direct">{directCount}</span>
+                <span className="blast-summary-label">Directly Affected</span>
+                <span className="blast-summary-desc">Services that directly call this API</span>
+              </div>
+            </div>
+            <div className="blast-summary-card">
+              <div className="blast-summary-icon blast-summary-icon--indirect">
+                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+              </div>
+              <div className="blast-summary-content">
+                <span className="blast-summary-value blast-summary-value--indirect">{indirectCount}</span>
+                <span className="blast-summary-label">Indirectly Affected</span>
+                <span className="blast-summary-desc">Services affected via dependencies</span>
+              </div>
+            </div>
+            <div className="blast-summary-card">
+              <div className="blast-summary-icon blast-summary-icon--teams">
+                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                </svg>
+              </div>
+              <div className="blast-summary-content">
+                <span className="blast-summary-value blast-summary-value--teams">{teamCount}</span>
+                <span className="blast-summary-label">Teams Affected</span>
+                <span className="blast-summary-desc">Teams that own affected services</span>
+              </div>
+            </div>
           </div>
-          <div className="blast-summary-content">
-            <span className="blast-summary-value blast-summary-value--teams">{teamCount}</span>
-            <span className="blast-summary-label">Teams Affected</span>
-            <span className="blast-summary-desc">Teams that own affected services</span>
-          </div>
-        </div>
-      </div>
+        </>
+      )}
 
       {hasGraph && (
-        <div className="blast-main-layout">
-          {/* Graph column */}
+        <div className={`blast-main-layout${isFullscreen ? " blast-main-layout--fullscreen" : ""}`}>
           <div className="blast-graph-column">
-            <div className="blast-graph-wrapper">
-              {/* Left-side controls (matching screenshot) */}
-              <div className="blast-graph-controls">
-                <button onClick={() => graphRef.current?.fitView()} className="blast-ctrl-btn" title="Fit to view">
-                  <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
-                  </svg>
-                </button>
-                <div className="blast-ctrl-divider" />
-                <button onClick={() => graphRef.current?.zoomIn()} className="blast-ctrl-btn" title="Zoom in">
-                  <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                  </svg>
-                </button>
-                <button onClick={() => graphRef.current?.zoomOut()} className="blast-ctrl-btn" title="Zoom out">
-                  <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
-                  </svg>
-                </button>
-                <div className="blast-ctrl-divider" />
-                <button className="blast-ctrl-btn" title="Expand">
-                  <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5M20.25 3.75h-4.5m4.5 0v4.5M3.75 20.25v-4.5m0 4.5h4.5m12-4.5v4.5m0-4.5h-4.5" />
-                  </svg>
-                </button>
+            {/* ── Graph Card ── */}
+            <div className={`blast-card${isFullscreen ? " blast-card--fullscreen" : ""}`}>
+              <div className="blast-card-header">
+                <span className="blast-card-title">Dependency Graph</span>
+                <div className="blast-card-controls">
+                  <button
+                    onClick={() => graphRef.current?.zoomOut()}
+                    className="blast-ctrl-btn"
+                    title="Zoom out"
+                    aria-label="Zoom out"
+                  >
+                    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => graphRef.current?.zoomIn()}
+                    className="blast-ctrl-btn"
+                    title="Zoom in"
+                    aria-label="Zoom in"
+                  >
+                    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                  </button>
+                  <div className="blast-ctrl-divider" />
+                  {isFullscreen && (
+                    <button
+                      onClick={() => setDrawerOpen((open) => !open)}
+                      className="blast-ctrl-btn"
+                      title={drawerOpen ? "Hide info panel" : "Show info panel"}
+                      aria-label={drawerOpen ? "Hide info panel" : "Show info panel"}
+                    >
+                      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+                      </svg>
+                    </button>
+                  )}
+                  <button
+                    onClick={toggleFullscreen}
+                    className="blast-ctrl-btn"
+                    title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+                    aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+                  >
+                    {isFullscreen ? (
+                      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+                      </svg>
+                    ) : (
+                      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5M20.25 3.75h-4.5m4.5 0v4.5M3.75 20.25v-4.5m0 4.5h4.5m12-4.5v4.5m0-4.5h-4.5" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
               </div>
-
               <GraphVisualization
                 ref={graphRef}
                 nodes={graphData.nodes}
                 links={graphData.links}
-                onNodeClick={setSelectedNode}
+                onNodeClick={handleNodeClick}
                 onLinkHover={setHoveredLink}
                 selectedNode={selectedNode}
+                fillParent={isFullscreen}
               />
             </div>
 
-            <div className="blast-info-banner">
-              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-              </svg>
-              <span>This graph shows the potential impact if <strong>{apiData.name} v{version.version}</strong> becomes unavailable or is deprecated.</span>
-            </div>
+            {!isFullscreen && (
+              <div className="blast-info-banner">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                </svg>
+                <span>This graph shows the potential impact if <strong>{apiData.name} v{version.version}</strong> becomes unavailable or is deprecated.</span>
+              </div>
+            )}
           </div>
 
-          {/* Sidebar */}
-          <div className="blast-sidebar">
-            {/* Legend */}
-            <div className="blast-panel">
-              <h3 className="blast-panel-title">Legend</h3>
-              <div className="blast-legend-list">
-                {LEGEND_ITEMS.map((item) => (
-                  <div key={item.label} className="blast-legend-item">
-                    <span
-                      className={`blast-legend-shape blast-legend-shape--${item.shape}`}
-                      style={{ background: item.color }}
-                    />
-                    <span className="blast-legend-text">{item.label}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="blast-legend-divider" />
-              <div className="blast-legend-list">
-                {EDGE_LEGEND.map((item) => (
-                  <div key={item.label} className="blast-legend-item blast-legend-edge">
-                    <span className={`blast-legend-line blast-legend-line--${item.style}`} />
-                    <span className="blast-legend-text">{item.label}</span>
-                  </div>
-                ))}
-              </div>
+          {/* Normal sidebar */}
+          {!isFullscreen && (
+            <div className="blast-sidebar">
+              <BlastSidePanels
+                selectedNode={selectedNode}
+                hoveredLink={hoveredLink}
+                apiData={apiData}
+                blastRadius={blastRadius}
+                teamsOwnership={teamsOwnership}
+              />
             </div>
+          )}
 
-            {/* Node Details */}
-            <div className="blast-panel">
-              {selectedNode ? (
-                <>
-                  <h3 className="blast-panel-title">Node Details</h3>
-                  <NodeDetail
-                    node={selectedNode}
+          {/* Fullscreen slide-in drawer */}
+          {isFullscreen && drawerOpen && (
+            <div className="blast-drawer">
+              <aside className="blast-drawer-panel">
+                <div className="blast-drawer-header">
+                  <span className="blast-drawer-title">Graph info</span>
+                  <button
+                    className="blast-drawer-close"
+                    onClick={closeDrawer}
+                    title="Close details"
+                    aria-label="Close details"
+                  >
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="blast-drawer-body">
+                  <BlastSidePanels
+                    selectedNode={selectedNode}
+                    hoveredLink={hoveredLink}
                     apiData={apiData}
                     blastRadius={blastRadius}
                     teamsOwnership={teamsOwnership}
                   />
-                </>
-              ) : hoveredLink ? (
-                <>
-                  <h3 className="blast-panel-title">Edge Details</h3>
-                  <div className="node-detail">
-                    <div className="node-detail-type-badge">
-                      <span className="badge badge-muted">{hoveredLink.label}</span>
-                    </div>
-                    <p className="node-detail-relationship">
-                      {typeof hoveredLink.source === "object" ? hoveredLink.source.label : ""}
-                      <span className="node-detail-arrow">→</span>
-                      {typeof hoveredLink.target === "object" ? hoveredLink.target.label : ""}
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <h3 className="blast-panel-title">Select a node to see details</h3>
-                  <div className="node-detail-empty">
-                    <div className="node-detail-empty-icon">
-                      <svg width="36" height="36" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.3">
-                        <circle cx="18" cy="5" r="3"/>
-                        <circle cx="6" cy="12" r="3"/>
-                        <circle cx="18" cy="19" r="3"/>
-                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" strokeWidth="1.5"/>
-                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" strokeWidth="1.5"/>
-                      </svg>
-                    </div>
-                    <p>No node selected</p>
-                    <span>Click any node in the graph to view details</span>
-                  </div>
-                </>
-              )}
+                </div>
+              </aside>
             </div>
-
-            {/* Tips */}
-            <div className="blast-panel blast-tips">
-              <h3 className="blast-panel-title">Tips</h3>
-              <ul className="blast-tips-list">
-                <li>
-                  <span className="blast-tip-dot" style={{ background: GRAPH_COLORS.direct.fill }} />
-                  Red nodes are services that directly use this API version
-                </li>
-                <li>
-                  <span className="blast-tip-dot" style={{ background: GRAPH_COLORS.indirect.fill }} />
-                  Orange nodes are services affected indirectly
-                </li>
-                <li>
-                  <span className="blast-tip-dot" style={{ background: GRAPH_COLORS.team.fill }} />
-                  Blue squares represent teams that own services
-                </li>
-                <li>Click any node to see more information</li>
-                <li>Use mouse wheel or +/- to zoom</li>
-                <li>Drag to pan around the graph</li>
-              </ul>
-            </div>
-          </div>
+          )}
         </div>
       )}
 
-      {!hasGraph && (
+      {!hasGraph && !isFullscreen && (
         <div className="blast-empty-banner">
           <div className="blast-empty-inner">
             <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">

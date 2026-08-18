@@ -7,13 +7,13 @@ The query layer is a set of named Cypher query strings stored in `server/src/db/
 ## 2. Why Separate Files
 
 Each query maps to one functional requirement (FR-01 through FR-10). Keeping them in separate files means:
-- Each query can be tested independently against CogODB.
+- Each query can be tested independently against cognodb.
 - Changes to one query don't risk breaking others.
 - The query text is readable without route/controller noise.
 
-## 3. CogODB Constraints
+## 3. cognodb Constraints
 
-All queries were verified against CogODB. The following Cypher functions are **not used** because CogODB does not support them:
+All queries were verified against cognodb. The following Cypher functions are **not used** because cognodb does not support them:
 
 - `shortestPath()`
 - `length(path)`
@@ -64,7 +64,7 @@ RETURN collect(DISTINCT svc) AS services,
 
 ## 6. Dependency Path (Q-05)
 
-Q-05 cannot use `shortestPath()` on CogODB. Instead it returns candidate paths:
+Q-05 cannot use `shortestPath()` on cognodb. Instead it returns candidate paths:
 
 ```cypher
 MATCH path = (target {id: $targetId})-[:DEPENDS_ON|CALLS|HAS_VERSION|REPLACED_BY*1..8]->(source {id: $sourceId})
@@ -73,7 +73,7 @@ RETURN [n IN nodes(path) | {id: n.id, label: labels(n)[0]}] AS pathNodes,
 LIMIT 10
 ```
 
-The Node.js service layer selects the shortest candidate by `pathNodes.length`. This keeps all Cypher CogODB-compatible while still delivering the shortest path to the client.
+The Node.js service layer selects the shortest candidate by `pathNodes.length`. This keeps all Cypher cognodb-compatible while still delivering the shortest path to the client.
 
 ## 7. Dashboard Query (Q-08)
 

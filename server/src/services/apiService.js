@@ -127,17 +127,89 @@ async function getTeamById(id) {
   };
 }
 
-async function getDashboard() {
-  const records = await runQuery(queries.DASHBOARD);
-  if (records.length === 0) {
-    return { apis: 0, services: 0, teams: 0, deprecatedVersions: 0 };
+function toNumber(value) {
+  if (value == null) return 0;
+  return typeof value.toNumber === "function" ? value.toNumber() : Number(value);
+}
+
+function buildOverviewGraph(apiRecords, depRecords) {
+  const nodes = [];
+  const links = [];
+  const nodeIds = new Set();
+  const serviceIds = new Set();
+  const linkKeys = new Set();
+
+  for (const record of apiRecords) {
+    const api = record.get("a")?.properties;
+    if (!api?.id) continue;
+    const consumers = (record.get("consumers") || [])
+      .map((node) => node?.properties)
+      .filter(Boolean);
+    const consumerCount = toNumber(record.get("consumerCount"));
+
+    if (!nodeIds.has(api.id)) {
+      nodeIds.add(api.id);
+      nodes.push({
+        id: api.id,
+        label: api.name,
+        type: "api",
+        domain: api.domain,
+        consumers: consumerCount,
+      });
+    }
+
+    for (const service of consumers.slice(0, 2)) {
+      if (!service.id) continue;
+      if (!nodeIds.has(service.id)) {
+        nodeIds.add(service.id);
+        serviceIds.add(service.id);
+        nodes.push({
+          id: service.id,
+          label: service.name,
+          type: "service",
+        });
+      }
+      const key = `${service.id}->${api.id}->CALLS`;
+      if (!linkKeys.has(key)) {
+        linkKeys.add(key);
+        links.push({ source: service.id, target: api.id, label: "CALLS" });
+      }
+    }
   }
-  const r = records[0];
+
+  for (const record of depRecords) {
+    const source = record.get("source");
+    const target = record.get("target");
+    if (!serviceIds.has(source) || !serviceIds.has(target)) continue;
+    const key = `${source}->${target}->DEPENDS_ON`;
+    if (linkKeys.has(key)) continue;
+    linkKeys.add(key);
+    links.push({ source, target, label: "DEPENDS_ON" });
+  }
+
+  return { nodes, links };
+}
+
+async function getDashboard() {
+  const [countRecords, graphRecords, depRecords] = await Promise.all([
+    runQuery(queries.DASHBOARD),
+    runQuery(queries.DASHBOARD_GRAPH),
+    runQuery(queries.DASHBOARD_GRAPH_DEPS),
+  ]);
+
+  const emptyCounts = { apis: 0, services: 0, teams: 0, deprecatedVersions: 0 };
+  const counts = countRecords.length === 0
+    ? emptyCounts
+    : {
+        apis: toNumber(countRecords[0].get("apiCount")),
+        services: toNumber(countRecords[0].get("serviceCount")),
+        teams: toNumber(countRecords[0].get("teamCount")),
+        deprecatedVersions: toNumber(countRecords[0].get("deprecatedCount")),
+      };
+
   return {
-    apis: r.get("apiCount").toNumber(),
-    services: r.get("serviceCount").toNumber(),
-    teams: r.get("teamCount").toNumber(),
-    deprecatedVersions: r.get("deprecatedCount").toNumber(),
+    ...counts,
+    graph: buildOverviewGraph(graphRecords, depRecords),
   };
 }
 

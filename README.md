@@ -4,7 +4,7 @@ A full-stack web application that models software APIs, services, teams, and the
 
 ## Why a Graph Database?
 
-The core questions are relationship-oriented: "What depends on this API?", "Which teams are affected?" These require multi-hop traversal over a dependency network — a natural fit for a graph database. **CogODB** stores the data, accessed via the official Neo4j driver using openCypher over Bolt.
+The core questions are relationship-oriented: "What depends on this API?", "Which teams are affected?" These require multi-hop traversal over a dependency network — a natural fit for a graph database. **cognodb** stores the data, accessed via the official Neo4j driver using openCypher over Bolt.
 
 ## Tech Stack
 
@@ -12,7 +12,7 @@ The core questions are relationship-oriented: "What depends on this API?", "Whic
 |---|---|
 | Frontend | React 19, Vite 6, React Router 7, react-force-graph-2d |
 | Backend | Express.js, Node.js, express-validator |
-| Database | CogODB (graph database, Bolt protocol) |
+| Database | cognodb (graph database, Bolt protocol) |
 | HTTP Client | Axios |
 
 ## Graph Data Model
@@ -55,7 +55,7 @@ Team ──OWNS──► Service ──CALLS──► API
 ## Architecture
 
 ```
-Frontend (React + Vite)  ←─ REST/JSON ──→  Backend (Express.js)  ←─ Bolt/Cypher ──→  CogODB
+Frontend (React + Vite)  ←─ REST/JSON ──→  Backend (Express.js)  ←─ Bolt/Cypher ──→  cognodb
 ```
 
 ### Backend Structure
@@ -76,7 +76,7 @@ server/src/
     seed.js             Idempotent seed script (MERGE-based)
 ```
 
-**Request flow:** Route → Controller → Service → Named Cypher Query → CogODB
+**Request flow:** Route → Controller → Service → Named Cypher Query → cognodb
 
 **Key design decisions:**
 - No ORM — Cypher queries are explicit and inspectable
@@ -90,13 +90,13 @@ server/src/
 ### Prerequisites
 
 - Node.js >= 18
-- A CogODB instance (or local Neo4j)
+- A cognodb instance (or local Neo4j)
 
 ### Environment
 
 ```bash
 cp .env.example server/.env
-# Edit server/.env with your CogODB credentials
+# Edit server/.env with your cognodb credentials
 ```
 
 `server/.env` variables:
@@ -204,9 +204,9 @@ MFA → Auth → User Profile → OAuth (3 hops)
 Invoice → Billing → Payment Processing → Ledger (3 hops)
 ```
 
-## CogODB Compatibility
+## cognodb Compatibility
 
-CogODB does not support `shortestPath()`, `length(path)`, or `size(path)`. Variable-length paths (`*1..N`) and standard Cypher operations (MATCH, MERGE, COLLECT, UNWIND, OPTIONAL MATCH) are supported. See `docs/1300_cognodb_compatibility.md` for details.
+cognodb does not support `shortestPath()`, `length(path)`, or `size(path)`. Variable-length paths (`*1..N`) and standard Cypher operations (MATCH, MERGE, COLLECT, UNWIND, OPTIONAL MATCH) are supported. See `docs/1300_cognodb_compatibility.md` for details.
 
 ## Documentation
 
@@ -217,7 +217,7 @@ Internal documentation is in the `docs/` directory using a numbered naming conve
 | `1000_problem_statement.md` | Problem definition and proposed solution |
 | `1100_requirement.md` | Full requirements specification |
 | `1200_implementation_plan.md` | Implementation plan and phases |
-| `1300_cognodb_compatibility.md` | CogODB compatibility notes |
+| `1300_cognodb_compatibility.md` | cognodb compatibility notes |
 | `1400_architecture_overview.md` | System architecture |
 | `1500_graph_data_model.md` | Graph data model documentation |
 | `1600_cypher_query_layer.md` | Cypher query documentation |

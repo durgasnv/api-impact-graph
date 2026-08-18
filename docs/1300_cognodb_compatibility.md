@@ -1,18 +1,18 @@
-# CognoDB Compatibility
+# cognodb Compatibility
 
-## 1. What Is CognoDB
+## 1. What Is cognodb
 
-CogODB is a cloud-hosted graph database that speaks the Bolt protocol and supports openCypher. The application connects using the official `neo4j-driver` package, which communicates over Bolt and sends openCypher queries. From the driver's perspective, CogODB behaves like Neo4j.
+cognodb is a cloud-hosted graph database that speaks the Bolt protocol and supports openCypher. The application connects using the official `neo4j-driver` package, which communicates over Bolt and sends openCypher queries. From the driver's perspective, cognodb behaves like Neo4j.
 
 ## 2. Why This Matters
 
-The implementation plan and Cypher queries were written against standard Neo4j openCypher syntax. During Phase 2, seed-data verification revealed that CogODB does not support certain Cypher functions that are available in Neo4j. These incompatibilities must be accounted for before Phase 3 query implementation.
+The implementation plan and Cypher queries were written against standard Neo4j openCypher syntax. During Phase 2, seed-data verification revealed that cognodb does not support certain Cypher functions that are available in Neo4j. These incompatibilities must be accounted for before Phase 3 query implementation.
 
 ## 3. Unsupported Cypher Features
 
-The following Cypher functions are **not supported** by CogODB:
+The following Cypher functions are **not supported** by cognodb:
 
-| Function | Expected Behavior | CogODB Result |
+| Function | Expected Behavior | cognodb Result |
 |----------|-------------------|---------------|
 | `shortestPath((a)-[*]-(b))` | Returns the shortest path between two nodes | `unknown function: shortestPath` |
 | `length(path)` | Returns the number of relationships in a path | `length() requires string, list, or path, got bool` |
@@ -22,7 +22,7 @@ These functions are used in the implementation plan's Q-05 (Dependency Path) and
 
 ## 4. What Does Work
 
-The following Cypher features work correctly against CogODB:
+The following Cypher features work correctly against cognodb:
 
 - `MERGE`, `MATCH`, `CREATE`, `SET`, `RETURN`
 - Variable-length path patterns: `[:DEPENDS_ON*1..4]`
@@ -68,7 +68,7 @@ The existing Q-04 query does not use `shortestPath` or `length`. It uses variabl
 
 ### 5.4 Dependency Path Query (Q-05)
 
-Q-05 as written in the implementation plan uses `shortestPath`, which will fail on CogODB. It must be rewritten for Phase 3 using one of the workarounds above.
+Q-05 as written in the implementation plan uses `shortestPath`, which will fail on cognodb. It must be rewritten for Phase 3 using one of the workarounds above.
 
 ## 6. Impact on Implementation
 

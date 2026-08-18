@@ -12,7 +12,7 @@ The goal is to let a user pick an API or service and instantly see everything th
 
 ```
 ┌──────────────┐       REST        ┌──────────────┐      Bolt/Cypher     ┌──────────┐
-│   Frontend   │ ◄──────────────► │   Backend    │ ◄──────────────────► │ CognoDB  │
+│   Frontend   │ ◄──────────────► │   Backend    │ ◄──────────────────► │ cognodb  │
 │ (React/Vite) │                  │  (Express)   │                      │ (Neo4j)  │
 └──────────────┘                  └──────────────┘                      └──────────┘
 ```
@@ -21,9 +21,9 @@ The goal is to let a user pick an API or service and instantly see everything th
 
 **Backend:** Express.js (Node) — thin REST layer with no ORM, raw Cypher queries executed via the official `neo4j-driver`.
 
-**Database:** CognoDB accessed over the Bolt protocol using openCypher.
+**Database:** cognodb accessed over the Bolt protocol using openCypher.
 
-**Seed script:** standalone Node script that connects to CognoDB and creates the demonstration dataset.
+**Seed script:** standalone Node script that connects to cognodb and creates the demonstration dataset.
 
 ### Why React + Vite Instead of Next.js
 
@@ -112,9 +112,9 @@ Every relationship points from the dependent entity toward the entity it depends
 
 **Consequence for traversal:** If `A -[:DEPENDS_ON]-> B`, then B is a dependency of A. If B goes down, A is affected. Blast-radius analysis therefore traverses edges **in reverse** — incoming `CALLS` and incoming `DEPENDS_ON` — to find all entities that would be impacted by a failure.
 
-### CogODB Compatibility
+### cognodb Compatibility
 
-CogODB does not support all Cypher functions available in Neo4j. The following functions are **unsupported** and must not be used:
+cognodb does not support all Cypher functions available in Neo4j. The following functions are **unsupported** and must not be used:
 
 - `shortestPath()`
 - `length(path)`
@@ -160,7 +160,7 @@ For every affected service (direct + indirect), find the team that owns it.
 
 ### Verified Blast Radius (Payment API v1)
 
-Verified against CogODB in Phase 2:
+Verified against cognodb in Phase 2:
 
 ```text
 Direct consumers (call Payment API):
@@ -313,7 +313,7 @@ RETURN DISTINCT affected
 
 **Direction:** `affected -[:DEPENDS_ON]-> origin`. The origin is the dependency. If the origin breaks, `affected` is impacted. This follows **incoming** `DEPENDS_ON` edges to the origin.
 
-**Note:** `length(path)` is unsupported by CogODB. Hop counts are calculated in Node.js by running separate queries per depth (1, 2, 3, 4) or by post-processing the variable-length result.
+**Note:** `length(path)` is unsupported by cognodb. Hop counts are calculated in Node.js by running separate queries per depth (1, 2, 3, 4) or by post-processing the variable-length result.
 
 ### Q-04: Blast Radius (from API Version)
 
@@ -334,7 +334,7 @@ RETURN COLLECT(DISTINCT svc) AS services,
 
 Return dependency paths between two entities, traversing only the relationships relevant to the dependency model.
 
-**CogODB limitation:** `shortestPath()` is not supported. The query retrieves all candidate paths up to a bounded depth, and the shortest is selected in Node.js.
+**cognodb limitation:** `shortestPath()` is not supported. The query retrieves all candidate paths up to a bounded depth, and the shortest is selected in Node.js.
 
 ```cypher
 MATCH path = (source {id: $sourceId})-[:DEPENDS_ON|CALLS|HAS_VERSION|REPLACED_BY*1..8]->(target {id: $targetId})
@@ -345,7 +345,7 @@ LIMIT 10
 
 **Why these relationship types:** The path must follow the dependency model. `DEPENDS_ON` connects services. `CALLS` connects services to APIs. `HAS_VERSION` connects APIs to versions. `REPLACED_BY` connects versions to versions. `OWNS` is excluded because team ownership is an attribution, not a dependency link.
 
-**Post-processing in Node.js:** The service layer receives candidate paths, computes the shortest by `pathNodes.length`, and returns it. This keeps all Cypher compatible with CogODB while still delivering the shortest path to the client.
+**Post-processing in Node.js:** The service layer receives candidate paths, computes the shortest by `pathNodes.length`, and returns it. This keeps all Cypher compatible with cognodb while still delivering the shortest path to the client.
 
 ### Q-06: Replacement API Version
 
@@ -397,7 +397,7 @@ Uses `OPTIONAL MATCH` throughout so the query returns zeros instead of no rows i
 | Package              | Purpose                           |
 |---------------------|-----------------------------------|
 | `express`           | HTTP framework                    |
-| `neo4j-driver`      | Official Bolt driver for CognoDB  |
+| `neo4j-driver`      | Official Bolt driver for cognodb  |
 | `cors`              | Cross-origin request handling     |
 | `dotenv`            | Environment variable loading      |
 | `express-validator` | Input validation                  |
@@ -447,13 +447,13 @@ The direction is: `(indirectlyAffected)-[:DEPENDS_ON]->(directConsumer)`. The in
 
 **Question:** Should dependency path explanation show the shortest path or all possible paths?
 
-**Answer:** Shortest path. CogODB does not support `shortestPath()`, so the query returns candidate paths up to a bounded depth and the service layer selects the shortest in Node.js. All paths would be overwhelming for larger graphs. Shortest path gives a clean, understandable explanation for the use case.
+**Answer:** Shortest path. cognodb does not support `shortestPath()`, so the query returns candidate paths up to a bounded depth and the service layer selects the shortest in Node.js. All paths would be overwhelming for larger graphs. Shortest path gives a clean, understandable explanation for the use case.
 
-### 9.5 CognoDB and Neo4j Driver Compatibility
+### 9.5 cognodb and Neo4j Driver Compatibility
 
-**Question:** Will the official `neo4j-driver` work with CognoDB?
+**Question:** Will the official `neo4j-driver` work with cognodb?
 
-**Answer:** CognoDB speaks the Bolt protocol and supports openCypher. The official driver connects and queries without modification.
+**Answer:** cognodb speaks the Bolt protocol and supports openCypher. The official driver connects and queries without modification.
 
 ### 9.6 Frontend-Backend Communication in Development
 
@@ -484,15 +484,15 @@ The direction is: `(indirectlyAffected)-[:DEPENDS_ON]->(directConsumer)`. The in
 | Phase | What | Done When |
 |-------|------|-----------|
 | **1** | **Project scaffold** — Create `server/` and `client/` directories, initialize `package.json` files, set up Express with health check, set up React + Vite, create `.env.example` and `.gitignore`. | Both servers start and respond to requests. |
-| **2** | **Database driver and seed data** — Implement singleton Neo4j driver (`db/driver.js`), write seed script with 5+ teams, 10+ services, 10+ APIs, 15+ versions, and all required relationships. | Running `node seed.js` populates CognoDB and the data is queryable via Cypher. |
-| **3** | **Core Cypher queries** — Implement Q-01 through Q-08 as named query files in `server/src/db/queries/`. All queries must use only CogODB-compatible Cypher (no `shortestPath`, `length(path)`, or `size(path)`). | Each query runs against seed data and returns expected results. |
+| **2** | **Database driver and seed data** — Implement singleton Neo4j driver (`db/driver.js`), write seed script with 5+ teams, 10+ services, 10+ APIs, 15+ versions, and all required relationships. | Running `node seed.js` populates cognodb and the data is queryable via Cypher. |
+| **3** | **Core Cypher queries** — Implement Q-01 through Q-08 as named query files in `server/src/db/queries/`. All queries must use only cognodb-compatible Cypher (no `shortestPath`, `length(path)`, or `size(path)`). | Each query runs against seed data and returns expected results. |
 | **4** | **REST endpoints** — Implement all routes, controllers, and service layer. Add input validation and error handling. | All endpoints return correct JSON responses via curl or Postman. |
 | **5** | **Dashboard page** — Build dashboard with stat cards (total APIs, services, deprecated versions, teams) and navigation links. | Dashboard loads with real counts from the backend. |
 | **6** | **API and Service list and detail pages** — Searchable lists, detail views showing versions, consumers, and relationships. | User can browse, search, and click into an API or service. |
 | **7** | **Blast-radius view** — Graph visualization with react-force-graph-2d, blast-radius panel showing direct and indirect affected services and teams. | User selects an API version and sees a visual blast-radius. |
 | **8** | **Dependency traversal view** — Multi-hop path display with PathExplainer component. | User selects a service and sees the dependency chain with an explanation. |
 | **9** | **Polish** — Loading, empty, and error states across all pages. Responsive layout. README with setup instructions, graph model diagram, and query documentation. | Full README, all states handled, UI is clean and responsive. |
-| **10** | **Deploy** — Deploy frontend to Vercel or Netlify, backend to Railway or Fly.io, verify end-to-end CognoDB connectivity. | Hosted demo link works end-to-end. |
+| **10** | **Deploy** — Deploy frontend to Vercel or Netlify, backend to Railway or Fly.io, verify end-to-end cognodb connectivity. | Hosted demo link works end-to-end. |
 
 ### Phase Dependencies
 

@@ -2,7 +2,7 @@
 
 ## 1. Purpose
 
-The graph data model defines how APIs, services, teams, and their dependencies are stored in CogODB. Every node type, property, and relationship direction is chosen to support the core use case: finding what is affected when an API or service changes.
+The graph data model defines how APIs, services, teams, and their dependencies are stored in cognodb. Every node type, property, and relationship direction is chosen to support the core use case: finding what is affected when an API or service changes.
 
 ## 2. Node Types
 
@@ -148,7 +148,7 @@ When an API becomes unavailable, blast-radius analysis finds all affected entiti
 
 ## 7. Seed Data Summary
 
-Verified against CogODB in Phase 2:
+Verified against cognodb in Phase 2:
 
 | Entity Type | Count |
 |-------------|-------|

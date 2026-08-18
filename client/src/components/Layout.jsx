@@ -68,7 +68,7 @@ function Layout() {
       </main>
       <footer className="app-footer">
         <span>API Impact Graph &bull; Understand dependencies. Assess impact. Make better decisions.</span>
-        <span>Powered by CognoDB + Neo4j</span>
+        <span>Powered by cognodb + Neo4j</span>
       </footer>
     </div>
   );

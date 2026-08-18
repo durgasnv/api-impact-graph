@@ -4,7 +4,7 @@
 
 ### 1.1 Application
 
-Build a functional web application named **API Impact Graph** for exploring API and service dependencies using CognoDB as the graph database layer.
+Build a functional web application named **API Impact Graph** for exploring API and service dependencies using cognodb as the graph database layer.
 
 ### 1.2 Primary User
 
@@ -17,7 +17,7 @@ The application must support the following workflow:
 1. User opens the application.
 2. User browses or searches available APIs/services.
 3. User selects an API or service.
-4. Application retrieves its connected dependency information from CognoDB.
+4. Application retrieves its connected dependency information from cognodb.
 5. Application displays direct and indirect dependencies.
 6. Application identifies affected services and responsible teams.
 7. Application presents the dependency network in an understandable visual format.
@@ -299,7 +299,7 @@ The final endpoint structure may be adjusted during implementation if a differen
 
 ### 5.3 Database Connection
 
-The backend shall connect to CognoDB using the official Neo4j driver.
+The backend shall connect to cognodb using the official Neo4j driver.
 
 Connection details shall be loaded from environment variables.
 
@@ -426,7 +426,7 @@ The GitHub repository README shall contain:
 6. Graph data-model diagram.
 7. Architecture overview.
 8. Setup instructions.
-9. CognoDB setup instructions.
+9. cognodb setup instructions.
 10. Environment variable configuration.
 11. Seed-data instructions.
 12. How to run the application.
@@ -447,7 +447,7 @@ The final submission shall provide:
 - Hosted application URL.
 - Short screen recording demonstrating the application.
 
-The CognoDB instance should remain available after submission so the hosted application can be tested against live data.
+The cognodb instance should remain available after submission so the hosted application can be tested against live data.
 
 ---
 
@@ -456,7 +456,7 @@ The CognoDB instance should remain available after submission so the hosted appl
 The project will be considered complete when:
 
 - [ ] A user can open the hosted application.
-- [ ] The application successfully connects to CognoDB.
+- [ ] The application successfully connects to cognodb.
 - [ ] Seed data can be loaded through a repository script.
 - [ ] APIs and services can be explored.
 - [ ] At least one 2+ hop traversal works.

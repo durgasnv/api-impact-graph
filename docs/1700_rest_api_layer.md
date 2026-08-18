@@ -3,7 +3,7 @@
 ## 1. Architecture
 
 ```
-Route → Controller → Service → Named Cypher → CogODB
+Route → Controller → Service → Named Cypher → cognodb
 ```
 
 Each layer has a single responsibility:
@@ -98,7 +98,7 @@ Without `versionId`: the service selects the active version, falling back to the
 
 With `versionId`: computes blast radius for that specific version.
 
-Verified against CogODB:
+Verified against cognodb:
 
 - Payment API (no versionId) → active version selected → 5 services, 2 teams
 - Payment API (`?versionId=payment-api-v1`) → same result (both versions share consumers)

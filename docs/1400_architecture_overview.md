@@ -5,7 +5,7 @@
 ```
 ┌──────────────────┐         REST (JSON)        ┌──────────────────┐       Bolt / Cypher        ┌──────────┐
 │                  │ ◄──────────────────────────► │                  │ ◄────────────────────────► │          │
-│  Frontend        │                              │  Backend         │                            │  CogODB  │
+│  Frontend        │                              │  Backend         │                            │  cognodb  │
 │  React + Vite    │                              │  Express.js      │                            │  (Graph) │
 │                  │                              │                  │                            │          │
 └──────────────────┘                              └──────────────────┘                            └──────────┘
@@ -14,7 +14,7 @@
 
 ## 2. Why This Architecture
 
-The application answers relationship-oriented questions: "What depends on this API?" and "Which teams are affected?" These questions require multi-hop graph traversal, not relational joins. A graph database (CogODB) stores the data. A thin Express backend translates HTTP requests into Cypher queries. A React frontend renders the results.
+The application answers relationship-oriented questions: "What depends on this API?" and "Which teams are affected?" These questions require multi-hop graph traversal, not relational joins. A graph database (cognodb) stores the data. A thin Express backend translates HTTP requests into Cypher queries. A React frontend renders the results.
 
 Each layer has a single responsibility:
 
@@ -64,13 +64,13 @@ server/src/
 
 ## 5. Database
 
-**Engine:** CogODB (cloud-hosted, Bolt protocol, openCypher).
+**Engine:** cognodb (cloud-hosted, Bolt protocol, openCypher).
 
-**Driver:** `neo4j-driver` (official Neo4j JavaScript driver). Works with CogODB because CogODB speaks the same Bolt + openCypher protocol.
+**Driver:** `neo4j-driver` (official Neo4j JavaScript driver). Works with cognodb because cognodb speaks the same Bolt + openCypher protocol.
 
 **Connection:** Configured via environment variables (`COGNODB_URI`, `COGNODB_USERNAME`, `COGNODB_PASSWORD`). Never committed to source control.
 
-**Compatibility note:** CogODB does not support `shortestPath()`, `length(path)`, or `size(path)`. See `1300_cognodb_compatibility.md` for details and workarounds.
+**Compatibility note:** cognodb does not support `shortestPath()`, `length(path)`, or `size(path)`. See `1300_cognodb_compatibility.md` for details and workarounds.
 
 ## 6. Data Flow
 
@@ -80,7 +80,7 @@ User clicks "Blast Radius" on Payment API v1
   → Backend validates versionId
   → Backend opens Neo4j session
   → Backend executes Q-04 (blast radius Cypher query)
-  → CogODB traverses: APIVersion → API ← CALLS ← Service ← DEPENDS_ON* ← Service
+  → cognodb traverses: APIVersion → API ← CALLS ← Service ← DEPENDS_ON* ← Service
   → Backend formats result as JSON
   → Backend closes session
   → Frontend receives { services, teams }
@@ -92,7 +92,7 @@ User clicks "Blast Radius" on Payment API v1
 ```
 Frontend (static)  →  Vercel / Netlify
 Backend (Node)     →  Railway / Fly.io
-Database           →  CogODB (cloud)
+Database           →  cognodb (cloud)
 ```
 
-The frontend build output is static HTML/JS/CSS. The backend is a standard Node.js process. CogODB is already hosted. No containers or infrastructure setup required.
+The frontend build output is static HTML/JS/CSS. The backend is a standard Node.js process. cognodb is already hosted. No containers or infrastructure setup required.
