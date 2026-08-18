@@ -60,3 +60,8 @@ export async function fetchDependencyPath(sourceId, targetId) {
   const { data } = await api.get(`/services/${sourceId}/paths/${targetId}`);
   return data;
 }
+
+export async function fetchHealth() {
+  const { data } = await api.get("/health");
+  return data;
+}

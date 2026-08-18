@@ -4,11 +4,13 @@ import { fetchServiceById, fetchServiceDependencies } from "../api";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorBanner from "../components/ErrorBanner";
 import Breadcrumbs from "../components/Breadcrumbs";
+import PathExplainer from "../components/PathExplainer";
 
 function ServiceDetail() {
   const { id } = useParams();
   const [service, setService] = useState(null);
   const [downstream, setDownstream] = useState([]);
+  const [targetId, setTargetId] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -116,6 +118,27 @@ function ServiceDetail() {
               </Link>
             ))}
           </div>
+        </section>
+      )}
+
+      {downstream.length > 0 && (
+        <section className="detail-section">
+          <h2>Dependency Path Explorer</h2>
+          <p className="detail-subtitle">Select a downstream service to see the dependency path:</p>
+          <select className="filter-select" value={targetId} onChange={(e) => setTargetId(e.target.value)}>
+            <option value="">Choose a service...</option>
+            {downstream.map((d) => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
+          {targetId && (
+            <PathExplainer
+              sourceId={id}
+              targetId={targetId}
+              sourceName={service.name}
+              targetName={downstream.find((d) => d.id === targetId)?.name || ""}
+            />
+          )}
         </section>
       )}
     </div>

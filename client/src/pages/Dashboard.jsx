@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { fetchDashboard } from "../api";
+import { fetchDashboard, fetchHealth } from "../api";
 import StatCard from "../components/StatCard";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorBanner from "../components/ErrorBanner";
 import DashboardGraph from "../components/DashboardGraph";
+import GlobalSearch from "../components/GlobalSearch";
 import { GRAPH_COLORS } from "../graphColors";
 
 function Dashboard() {
@@ -12,12 +13,13 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [visible, setVisible] = useState(false);
+  const [dbStatus, setDbStatus] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
-    fetchDashboard()
-      .then((dash) => {
-        if (!cancelled) setData(dash);
+    Promise.all([fetchDashboard(), fetchHealth()])
+      .then(([dash, health]) => {
+        if (!cancelled) { setData(dash); setDbStatus(health); }
       })
       .catch(() => {
         if (!cancelled) setError("Failed to load dashboard data. Is the server running?");
@@ -61,6 +63,13 @@ function Dashboard() {
             Explore Services
           </Link>
         </div>
+        <GlobalSearch />
+        {dbStatus && (
+          <div className={`db-health db-health--${dbStatus.database === "connected" ? "ok" : "err"}`}>
+            <span className="db-health-dot" />
+            Database: {dbStatus.database}
+          </div>
+        )}
       </section>
 
       <div className="stat-grid">

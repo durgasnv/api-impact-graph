@@ -68,7 +68,7 @@ const EDGE_LEGEND = [
   { label: "HAS_VERSION", style: "line" },
 ];
 
-function BlastSidePanels({ selectedNode, hoveredLink, apiData, blastRadius, teamsOwnership }) {
+function BlastSidePanels({ selectedNode, hoveredLink, apiData, blastRadius, teamsOwnership, criticalPath }) {
   return (
     <>
       <div className="blast-panel">
@@ -139,6 +139,21 @@ function BlastSidePanels({ selectedNode, hoveredLink, apiData, blastRadius, team
           </>
         )}
       </div>
+
+      {criticalPath && criticalPath.length > 2 && (
+        <div className="blast-panel">
+          <h3 className="blast-panel-title">Critical Path</h3>
+          <p className="blast-critical-desc">Longest dependency chain ({criticalPath.length - 1} hops):</p>
+          <ol className="blast-critical-path">
+            {criticalPath.map((name, i) => (
+              <li key={i} className="blast-critical-step">
+                <span className="blast-critical-node">{name}</span>
+                {i < criticalPath.length - 1 && <span className="blast-critical-arrow">→</span>}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
 
       <div className="blast-panel blast-tips">
         <h3 className="blast-panel-title">Tips</h3>
@@ -230,6 +245,67 @@ function BlastRadius() {
   const affectedServiceIds = blastRadius ? new Set(blastRadius.services.map((s) => s.id)) : new Set();
   const teamCount = teamsOwnership.filter((t) => t.services.some((s) => affectedServiceIds.has(s.id))).length;
   const hasGraph = blastRadius && blastRadius.services.length > 0;
+
+  const criticalPath = useMemo(() => {
+    if (!graphData.nodes.length || !graphData.links.length) return null;
+    const adj = {};
+    for (const l of graphData.links) {
+      const src = typeof l.source === "object" ? l.source.id : l.source;
+      const tgt = typeof l.target === "object" ? l.target.id : l.target;
+      if (!adj[tgt]) adj[tgt] = [];
+      adj[tgt].push(src);
+    }
+    const nodeMap = {};
+    for (const n of graphData.nodes) nodeMap[n.id] = n;
+    let longest = [];
+    const dfs = (nodeId, path) => {
+      if (path.length > longest.length) longest = [...path];
+      for (const next of (adj[nodeId] || [])) {
+        if (!path.includes(next) && nodeMap[next]) {
+          dfs(next, [...path, next]);
+        }
+      }
+    };
+    const versionNode = graphData.nodes.find((n) => n.type === "apiVersion");
+    if (versionNode) dfs(versionNode.id, [versionNode.id]);
+    return longest.map((id) => nodeMap[id]?.label?.split("\n")[0] || id);
+  }, [graphData]);
+
+  const exportCSV = () => {
+    if (!blastRadius) return;
+    const directIds = new Set(blastRadius.directIds || []);
+    const rows = [["Name", "Type", "Status", "Owner"]];
+    for (const s of blastRadius.services) {
+      const type = directIds.has(s.id) ? "Direct" : "Indirect";
+      const team = teamsOwnership.find((t) => t.services.some((x) => x.id === s.id));
+      rows.push([s.name, type, s.status || "active", team?.name || ""]);
+    }
+    const csv = rows.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `blast-radius-${apiData.name.replace(/\s+/g, "-")}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+  };
+
+  const exportJSON = () => {
+    if (!blastRadius) return;
+    const directIds = new Set(blastRadius.directIds || []);
+    const data = {
+      api: apiData.name,
+      version: version.version,
+      status: version.status,
+      services: blastRadius.services.map((s) => {
+        const team = teamsOwnership.find((t) => t.services.some((x) => x.id === s.id));
+        return { name: s.name, type: directIds.has(s.id) ? "direct" : "indirect", owner: team?.name || "" };
+      }),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `blast-radius-${apiData.name.replace(/\s+/g, "-")}.json`;
+    a.click(); URL.revokeObjectURL(url);
+  };
 
   const closeDrawer = () => setDrawerOpen(false);
 
@@ -361,6 +437,13 @@ function BlastRadius() {
               </div>
             </div>
           </div>
+
+          {hasGraph && (
+            <div className="blast-export-row">
+              <button className="btn btn-sm btn-outline" onClick={exportCSV}>Export CSV</button>
+              <button className="btn btn-sm btn-outline" onClick={exportJSON}>Export JSON</button>
+            </div>
+          )}
         </>
       )}
 
@@ -453,6 +536,7 @@ function BlastRadius() {
                 apiData={apiData}
                 blastRadius={blastRadius}
                 teamsOwnership={teamsOwnership}
+                criticalPath={criticalPath}
               />
             </div>
           )}
@@ -481,6 +565,7 @@ function BlastRadius() {
                     apiData={apiData}
                     blastRadius={blastRadius}
                     teamsOwnership={teamsOwnership}
+                    criticalPath={criticalPath}
                   />
                 </div>
               </aside>
