@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { fetchServiceById, fetchServiceDependencies } from "../api";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorBanner from "../components/ErrorBanner";
+import Breadcrumbs from "../components/Breadcrumbs";
 
 function ServiceDetail() {
   const { id } = useParams();
@@ -34,7 +35,11 @@ function ServiceDetail() {
 
   return (
     <div className="page">
-      <Link to="/services" className="back-link">Back to Services</Link>
+      <Breadcrumbs items={[
+        { label: "Home", to: "/" },
+        { label: "Services", to: "/services" },
+        { label: service.name }
+      ]} />
 
       <div className="detail-header">
         <h1>{service.name}</h1>

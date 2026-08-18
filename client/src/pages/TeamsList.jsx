@@ -1,16 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { fetchAllTeams } from "../api";
 import SearchBar from "../components/SearchBar";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorBanner from "../components/ErrorBanner";
 import EmptyState from "../components/EmptyState";
+import SortControls from "../components/SortControls";
+import Pagination from "../components/Pagination";
+
+const PAGE_SIZE = 12;
 
 function TeamsList() {
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("name");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -21,33 +27,55 @@ function TeamsList() {
     return () => { cancelled = true; };
   }, []);
 
+  const processed = useMemo(() => {
+    let result = teams;
+
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter((t) => t.name.toLowerCase().includes(q));
+    }
+
+    result = [...result].sort((a, b) => {
+      if (sortBy === "name") return a.name.localeCompare(b.name);
+      if (sortBy === "services") return b.services.length - a.services.length;
+      return 0;
+    });
+
+    return result;
+  }, [teams, search, sortBy]);
+
+  const totalPages = Math.ceil(processed.length / PAGE_SIZE);
+  const paged = processed.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  useEffect(() => { setPage(1); }, [search, sortBy]);
+
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorBanner message={error} />;
-
-  const filtered = teams.filter((t) =>
-    t.name.toLowerCase().includes(search.toLowerCase())
-  );
 
   return (
     <div className="page">
       <div className="page-header">
         <h1>Teams</h1>
-        <SearchBar
-          value={search}
-          onChange={setSearch}
-          placeholder="Search teams..."
-        />
+        <SearchBar value={search} onChange={setSearch} placeholder="Search teams..." />
       </div>
 
-      {filtered.length === 0 && search && (
-        <EmptyState message="No teams match your search." />
-      )}
-      {teams.length === 0 && !search && (
+      <div className="toolbar">
+        <SortControls sortBy={sortBy} onSortChange={setSortBy}
+          options={[
+            { value: "name", label: "Name" },
+            { value: "services", label: "Service count" }
+          ]} />
+      </div>
+
+      {processed.length === 0 && !search && (
         <EmptyState message="No teams found." />
+      )}
+      {processed.length === 0 && search && (
+        <EmptyState message="No teams match your search." />
       )}
 
       <div className="card-list">
-        {filtered.map((t) => (
+        {paged.map((t) => (
           <Link key={t.id} to={`/teams/${t.id}`} className="card-link">
             <div className="entity-card">
               <div className="entity-card-header">
@@ -68,6 +96,8 @@ function TeamsList() {
           </Link>
         ))}
       </div>
+
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
   );
 }

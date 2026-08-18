@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { fetchApiById, fetchApiConsumers } from "../api";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorBanner from "../components/ErrorBanner";
+import Breadcrumbs from "../components/Breadcrumbs";
 
 function ApiDetail() {
   const { id } = useParams();
@@ -39,7 +40,11 @@ function ApiDetail() {
 
   return (
     <div className="page">
-      <Link to="/apis" className="back-link">Back to APIs</Link>
+      <Breadcrumbs items={[
+        { label: "Home", to: "/" },
+        { label: "APIs", to: "/apis" },
+        { label: apiData.name }
+      ]} />
 
       <div className="detail-header">
         <h1>{apiData.name}</h1>

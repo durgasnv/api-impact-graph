@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { fetchTeamById } from "../api";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorBanner from "../components/ErrorBanner";
+import Breadcrumbs from "../components/Breadcrumbs";
 
 function TeamDetail() {
   const { id } = useParams();
@@ -29,7 +30,11 @@ function TeamDetail() {
 
   return (
     <div className="page">
-      <Link to="/teams" className="back-link">Back to Teams</Link>
+      <Breadcrumbs items={[
+        { label: "Home", to: "/" },
+        { label: "Teams", to: "/teams" },
+        { label: team.name }
+      ]} />
 
       <div className="detail-header">
         <h1>{team.name}</h1>
