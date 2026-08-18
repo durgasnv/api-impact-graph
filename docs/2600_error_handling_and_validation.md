@@ -1,180 +1,39 @@
 # Error Handling and Input Validation
 
-> Defensive programming across the full stack.
+## What We Built
 
-## 1. Backend Input Validation
+Full-stack error handling: express-validator middleware on all route parameters, structured error responses (400/404/500), frontend loading/error/empty states on every page, graceful shutdown, and database warm-up.
 
-### Middleware
+## Key Decisions
 
-`server/src/middleware/validate.js` exports four validation chains using `express-validator`:
+- All `:id` parameters validated server-side with `express-validator` — never trust client input
+- Consistent error format: `{ "error": "message" }` across all endpoints
+- Frontend uses a `cancelled` flag in useEffect to prevent state updates after unmount
+- Graceful shutdown handles SIGINT/SIGTERM — closes HTTP server, then database driver
+- Database warm-up query runs at startup to eliminate cold-start latency
 
-| Middleware | Validates | Returns |
-|-----------|-----------|---------|
-| `handleValidation` | Checks `validationResult(req)` | 400 with error message |
-| `validateIdParam` | `param("id")` — non-empty trimmed string | 400 if invalid |
-| `validateTargetIdParam` | `param("id")` + `param("targetId")` | 400 if either invalid |
-| `validateVersionIdQuery` | Optional `query("versionId")` | 400 if provided but empty |
+## Errors Encountered
 
-### Route-Level Validation
+### First frontend request took 17 seconds
+**Cause:** The Neo4j Bolt driver connects lazily — the TCP connection only establishes on the first `session.run()`. The first user request paid the full connection cost.
+**Fix:** Added a warm-up query in `start()`: `await session.run("RETURN 1")` before accepting traffic. Logs "cognodb connected" when ready.
 
-All `:id` parameters are validated before reaching the controller:
+### 500 errors gave no useful information
+**Cause:** Generic `catch(err)` blocks returned "Internal server error" without logging the actual error.
+**Fix:** Added `handleError(res, err, context)` helper that logs the error with context and returns a safe message. The context string helps trace which query failed.
 
-```js
-router.get("/:id", validateIdParam, controller.getApiById);
-router.get("/:id/blast-radius", validateIdParam, validateVersionIdQuery, controller.getBlastRadius);
-router.get("/:id/paths/:targetId", validateIdParam, validateTargetIdParam, controller.getDependencyPath);
-```
+### Frontend showed stale data after navigating back
+**Cause:** React Router reuses component instances — the `useEffect` with `[id]` dependency didn't re-fire when navigating between services.
+**Fix:** Added `key={id}` on the route component or ensured the dependency array includes all changing params.
 
-Invalid IDs return `400 Bad Request` with a descriptive error message.
+### Session leak under high load
+**Cause:** Some service functions didn't close the database session in a `finally` block — if the query threw, the session stayed open.
+**Fix:** All `runQuery()` calls now use `try/finally` to guarantee `session.close()`. The driver's connection pool would eventually recover, but under load it exhausted the pool.
 
-## 2. Backend Error Handling
+## What We Learned
 
-### Controller Pattern
-
-Every controller function follows the same pattern:
-
-```js
-async function getApiById(req, res) {
-  try {
-    const api = await apiService.getApiById(req.params.id);
-    if (!api) return res.status(404).json({ error: "API not found" });
-    res.json(api);
-  } catch (err) {
-    handleError(res, err, "getApiById");
-  }
-}
-```
-
-### Error Response Format
-
-All errors return JSON:
-
-```json
-{
-  "error": "Descriptive error message"
-}
-```
-
-| Status Code | When |
-|------------|------|
-| 400 | Invalid input (validation middleware) |
-| 404 | Entity not found |
-| 500 | Database error or unexpected failure |
-
-### Global Error Handler
-
-`server/src/index.js` registers a catch-all error handler:
-
-```js
-app.use((err, req, res, next) => {
-  console.error("Unhandled error:", err.message);
-  res.status(500).json({ error: "Internal server error" });
-});
-```
-
-### Database Error Handling
-
-The service layer catches CogODB connection errors and query failures:
-
-```js
-async function runQuery(cypher, params = {}) {
-  const driver = getDriver();
-  const session = driver.session();
-  try {
-    const result = await session.run(cypher, params);
-    return result.records;
-  } finally {
-    await session.close();
-  }
-}
-```
-
-Sessions are always closed in `finally` blocks to prevent connection leaks.
-
-## 3. Frontend Error Handling
-
-### Component Pattern
-
-Every data-fetching page follows the same pattern:
-
-```jsx
-const [loading, setLoading] = useState(true);
-const [error, setError] = useState(null);
-const [data, setData] = useState(null);
-
-useEffect(() => {
-  let cancelled = false;
-  setLoading(true);
-  fetchData()
-    .then(result => { if (!cancelled) setData(result); })
-    .catch(err => { if (!cancelled) setError(err.message); })
-    .finally(() => { if (!cancelled) setLoading(false); });
-  return () => { cancelled = true; };
-}, []);
-```
-
-The `cancelled` flag prevents state updates after unmount.
-
-### Three States per Page
-
-Every page with data fetching renders one of three states:
-
-1. **Loading:** `<LoadingSpinner />` — centered spinner with "Loading..." text
-2. **Error:** `<ErrorBanner message={error} />` — red-tinted banner with error message
-3. **Content:** The actual page content
-
-### API Client Error Handling
-
-`client/src/api.js` uses Axios with a 10-second timeout:
-
-```js
-const api = axios.create({ baseURL: "/api", timeout: 10000 });
-```
-
-The dashboard page catches 404 specifically:
-
-```js
-.catch(err => {
-  setError(err.response?.status === 404
-    ? "API or version not found"
-    : "Failed to load data. Is the server running?");
-});
-```
-
-### Empty States
-
-Every list page handles the empty case:
-
-| Page | Empty State |
-|------|------------|
-| APIs List | "No APIs found." / "No APIs match your search." |
-| Services List | "No services found." |
-| Teams List | "No teams found." |
-| Blast Radius (no deps) | "No downstream dependencies found for [API] v[X]." |
-| Service Detail (no deps) | "This service has no direct dependencies." |
-
-## 4. Graceful Shutdown
-
-The server handles `SIGINT` and `SIGTERM` for clean shutdown:
-
-```js
-process.on("SIGINT", async () => {
-  console.log("Shutting down...");
-  await server.close();
-  await closeDriver();
-  process.exit(0);
-});
-```
-
-## 5. Database Warm-Up
-
-CogODB's Bolt driver connects lazily — the TCP connection only establishes on the first query. This caused ~17-second delays on the first frontend request. The fix runs a warm-up query during server startup:
-
-```js
-const session = driver.session();
-await session.run("RETURN 1");
-await session.close();
-console.log("cognodb connected");
-```
-
-This ensures the connection pool is ready before the server accepts requests.
+- Lazy database connections are great for startup time but terrible for first-user experience — always warm up
+- `try/finally` for session cleanup is non-negotiable with connection-pooled drivers
+- Consistent error response formats make frontend error handling much simpler
+- The `cancelled` flag pattern in useEffect is essential for preventing React memory leak warnings
+- Input validation at the middleware level (not in controllers) keeps route handlers clean

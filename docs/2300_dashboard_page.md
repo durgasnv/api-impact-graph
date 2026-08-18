@@ -1,97 +1,31 @@
 # Dashboard Page
 
-> The landing page of the API Impact Graph application.
+## What We Built
 
-## 1. Overview
+A landing page showing aggregate stats (APIs, services, teams, deprecated versions), an interactive dependency overview graph of the top 10 APIs by consumer count, and quick navigation cards.
 
-The dashboard provides a high-level view of the entire dependency landscape. It serves as the entry point for exploring APIs, services, and teams.
+## Key Decisions
 
-## 2. Hero Section
+- Used `react-force-graph-2d` for the overview graph with actual D3 force simulation (unlike the blast radius page which uses fixed positions)
+- Top 10 APIs selected by consumer count — gives the most interesting visual density
+- `buildOverviewGraph()` on the server constructs the graph from two parallel Cypher queries rather than one complex query
 
-- **Badge:** "Powered by cognodb"
-- **Title:** "API Impact" (regular weight) + "Graph" (gradient accent in purple)
-- **Subtitle:** Describes the app's purpose — understanding API change impact, exploring dependencies, tracing affected services
-- **Action buttons:** "Explore APIs" (primary, links to `/apis`) and "Explore Services" (secondary, links to `/services`)
+## Errors Encountered
 
-The hero section fades in on page load with a CSS transition (`fadeInDown` animation).
+### Dashboard graph showed empty on first load
+**Cause:** The `DASHBOARD_GRAPH` query returned APIs with consumers, but `buildOverviewGraph()` expected the consumers array to always exist. Some APIs had zero consumers.
+**Fix:** Added null checks — `consumers || []` before iterating.
 
-## 3. Stat Cards
+### Graph nodes overlapping after force simulation
+**Cause:** Default charge strength was too weak for 20+ nodes in a small container.
+**Fix:** Tuned D3 forces — charge strength to -140, link distance to 72, velocity decay to 0.35. These values gave the best visual separation without excessive spread.
 
-Four statistic cards in a responsive grid:
+### Neighbor highlighting felt laggy
+**Cause:** `onNodeHover` was recomputing the neighbor Set on every hover event.
+**Fix:** Memoized the neighbor Set with `useMemo` keyed on the hovered node and all links.
 
-| Card | Value Source | Color | Icon |
-|------|-------------|-------|------|
-| APIs | `dashboard.apis` | Indigo (#6366f1) | Link icon |
-| Services | `dashboard.services` | Cyan (#0891b2) | Server icon |
-| Teams | `dashboard.teams` | Purple (#7c3aed) | Users icon |
-| Deprecated | `dashboard.deprecatedVersions` | Orange (#f97316) | Warning icon |
+## What We Learned
 
-Each card uses a `StatCard` component with staggered slide-in animation (0ms, 100ms, 200ms, 300ms delays).
-
-## 4. Dependency Overview Graph
-
-An interactive force-directed graph showing the top 10 APIs by consumer count, rendered using `DashboardGraph` component.
-
-### Data Source
-
-The `GET /api/dashboard` endpoint runs two Cypher queries in parallel:
-1. **DASHBOARD_GRAPH:** Top 10 APIs by consumer count, with their calling services
-2. **DASHBOARD_GRAPH_DEPS:** All DEPENDS_ON edges between services
-
-The `buildOverviewGraph()` function in `apiService.js` constructs the client-side graph:
-- API nodes include `id`, `label`, `type: "api"`, `domain`, `consumers` (count)
-- Service nodes include `id`, `label`, `type: "service"`
-- Links include CALLS (service → API) and DEPENDS_ON (service → service)
-
-### Interaction
-
-- **Hover:** Highlights the hovered node and its immediate neighbors. Non-neighbor nodes dim to 18% opacity.
-- **Click on API node:** Navigates to `/apis/:id`
-- **Click on service node:** Navigates to `/services/:id`
-- **Tooltip:** Shows node name, domain, consumer count on hover
-
-### Graph Configuration
-
-- D3 force simulation with `cooldownTicks: 80`, `d3AlphaDecay: 0.04`, `d3VelocityDecay: 0.35`
-- Charge strength: -140, link distance: 72, link strength: 0.55
-- Fixed height: 340px, responsive width via ResizeObserver
-- Custom canvas rendering with node labels (truncated to 16 chars, 28 on hover)
-
-### Legend
-
-Below the graph: API dot (indigo), Service dot (cyan), CALLS line (solid), DEPENDS_ON line (dashed).
-
-## 5. Quick Action Cards
-
-Three navigation cards on the right side of the dashboard grid:
-
-| Card | Target | Icon Color |
-|------|--------|-----------|
-| Browse APIs | `/apis` | Indigo |
-| Browse Services | `/services` | Cyan |
-| Browse Teams | `/teams` | Purple |
-
-Each card has an icon, title, description, and animated arrow.
-
-## 6. Data Flow
-
-```
-Dashboard mounts
-  → fetchDashboard() → GET /api/dashboard
-  → Server runs DASHBOARD + DASHBOARD_GRAPH + DASHBOARD_GRAPH_DEPS in parallel
-  → Returns { apis, services, teams, deprecatedVersions, graph: { nodes, links } }
-  → Client renders hero, stat cards, overview graph, quick actions
-```
-
-## 7. Error and Loading States
-
-- **Loading:** Spinner with "Loading..." text
-- **Error:** Error banner with message
-- **Empty graph:** "No dependency relationships to display yet." with seed instruction
-
-## 8. Components Used
-
-- `DashboardGraph.jsx` — Interactive force-directed graph with neighbor highlighting
-- `StatCard.jsx` — Animated stat card with icon and color
-- `LoadingSpinner.jsx` — Centered spinner
-- `ErrorBanner.jsx` — Error message display
+- Force-directed graphs need careful tuning — default D3 parameters look messy with real data
+- Building the graph on the server (而不是 client) keeps the frontend thin and lets us control which APIs appear
+- Two simple Cypher queries + Node.js assembly is often better than one complex Cypher query
