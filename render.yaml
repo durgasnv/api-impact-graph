@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: api-impact-graph
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: cd client && npm install && npm run build && cd ../server && npm install
+    startCommand: cd server && node src/index.js
+    envVars:
+      - key: COGNODB_URI
+        sync: false
+      - key: COGNODB_USERNAME
+        sync: false
+      - key: COGNODB_PASSWORD
+        sync: false
+      - key: PORT
+        value: 10000
