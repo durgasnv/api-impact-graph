@@ -306,7 +306,7 @@ html.dark body {
 }
 
 /* ── Global Search ── */
-.global-search { position: relative; margin-top: 1rem; width: 100%; max-width: 480px; }
+.global-search { position: relative; margin: 1.25rem auto 0; width: 100%; max-width: 480px; }
 .global-search-input {
   width: 100%;
   padding: 0.55rem 0.85rem;
