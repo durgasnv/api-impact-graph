@@ -223,3 +223,4 @@ RETURN apiCount, serviceCount, teamCount, count(av) AS deprecatedCount
 | `2600` | Error handling (learning log) |
 | `2700` | Deployment guide (learning log) |
 | `2800` | Fullscreen & drawer UI (learning log) |
+| `2900` | Advanced features: search, filtering, export, critical path (learning log) |
