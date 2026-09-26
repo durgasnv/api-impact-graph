@@ -1,5 +1,13 @@
 # Advanced Features: Search, Filtering, Export, Critical Path
 
+## Current Checkout Status and Limits
+
+The frontend portions described here are present in `client/src`: global search, list filtering/sorting/pagination, breadcrumbs, dependency path display, blast-radius CSV/JSON download, critical-path display, and the dashboard health indicator. These rely on REST endpoints provided by the backend. In the current working tree, the route, controller, service, database, and seed implementation files are absent, while `server/src/index.js` still imports them. As a result, these features cannot currently be verified end to end from this checkout.
+
+Global search waits 250 ms after typing, then fetches the complete API, service, and team lists and matches names in the browser. It returns at most eight results. It is not server-side search and may become inefficient for large datasets. List filters, sorting, and pagination are also performed in the browser, with 12 results per page.
+
+The blast-radius export serializes the data currently returned to the page. CSV fields are quoted, but embedded double quotes must also be doubled to be valid CSV; confirm this escaping when restoring or changing the export. The critical-path panel computes a longest chain over the graph assembled for display. The current graph builder creates a placeholder dependency edge from each indirect service to the first direct consumer, so that panel is only an estimate and should not be treated as an authoritative dependency path until the backend returns the actual relationship paths and the frontend uses them.
+
 ## What We Added
 
 Global search on dashboard, advanced filtering/sort/pagination on list pages, breadcrumbs on detail pages, PathExplainer for dependency paths, CSV/JSON export for blast radius, critical path highlighting, and a DB health indicator.
