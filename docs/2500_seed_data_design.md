@@ -1,5 +1,9 @@
 # Seed Data Design
 
+## Current Checkout Status
+
+The seed design and figures below document the sample dataset that this project was built to generate. The script `server/seed/seed.js` is absent from the current working tree, so the documented dataset cannot be created using the checked-out files as they stand. Treat the counts and generation details below as design/history until the seed script is restored and run against a database.
+
 ## What We Built
 
 A deterministic seed script generating 20 teams, 94 services, 70+ APIs, 112+ API versions, and 789 relationships — representing a realistic microservices ecosystem.
