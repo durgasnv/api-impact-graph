@@ -1,5 +1,9 @@
 # REST API Layer
 
+## Current Checkout Status
+
+This document describes the intended REST API and backend design. In the current working tree, the implementation files it names under `server/src/routes/`, `server/src/controllers/`, `server/src/services/`, `server/src/db/`, and `server/src/middleware/` are absent. `server/src/index.js` still imports several of them, so the backend cannot currently start from this checkout. Treat the endpoint details below as the API contract to restore or verify, not as confirmation that those endpoints are runnable here.
+
 ## 1. Architecture
 
 ```
