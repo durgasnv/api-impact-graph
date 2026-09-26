@@ -4,6 +4,10 @@
 
 A full-stack web application that models APIs, services, teams, and their dependencies as a graph, enabling engineers to explore blast radius, dependency chains, and team ownership when an API or service changes.
 
+## Checkout Status
+
+The frontend and backend entry point are present in this checkout, but the backend route, controller, service, database, middleware, and seed files referenced by `server/src/index.js` and the setup instructions are currently absent. The backend therefore cannot start as checked out, and the documented API, graph queries, and seed workflow should be treated as intended behavior until those files are restored. See `docs/1700_rest_api_layer.md` and `docs/2500_seed_data_design.md` for details.
+
 ---
 
 ## Use Case
