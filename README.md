@@ -99,7 +99,7 @@ Edit `server/.env`:
 
 ```bash
 cd server
-node seed/seed.js
+node src/seed/seed.js
 ```
 
 Creates 20 teams, 94 services, 70+ APIs, 112 API versions, and 789 relationships. Idempotent — safe to re-run.
