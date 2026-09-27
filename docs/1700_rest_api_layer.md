@@ -2,7 +2,7 @@
 
 ## Current Checkout Status
 
-This document describes the intended REST API and backend design. In the current working tree, the implementation files it names under `server/src/routes/`, `server/src/controllers/`, `server/src/services/`, `server/src/db/`, and `server/src/middleware/` are absent. `server/src/index.js` still imports several of them, so the backend cannot currently start from this checkout. Treat the endpoint details below as the API contract to restore or verify, not as confirmation that those endpoints are runnable here.
+The route, controller, service, query, and validation files described below are present in this checkout. The backend still requires a reachable cognodb instance and valid connection settings to start. The path endpoint responds with `nodes` and `relationships`; the frontend path explorer consumes those fields.
 
 ## 1. Architecture
 
@@ -115,7 +115,7 @@ Verified against cognodb:
 - `:id` is the starting service (source).
 - `:targetId` is the destination.
 
-The Cypher query returns up to 10 candidate paths. The service layer sorts by `pathNodes.length` and returns the shortest.
+The Cypher query returns up to 10 candidate paths. The service layer sorts by `nodes.length` and returns the shortest path as `{ nodes, relationships }`.
 
 ### Q-05 Fix
 

@@ -2,7 +2,7 @@
 
 ## Current Checkout Status
 
-The seed design and figures below document the sample dataset that this project was built to generate. The script `server/seed/seed.js` is absent from the current working tree, so the documented dataset cannot be created using the checked-out files as they stand. Treat the counts and generation details below as design/history until the seed script is restored and run against a database.
+The seed script is present at `server/src/seed/seed.js`. It requires the cognodb connection settings described in the README. The figures below describe the dataset it is designed to create; actual database counts may differ if the database also contains other data.
 
 ## What We Built
 

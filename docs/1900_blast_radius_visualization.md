@@ -53,10 +53,11 @@ For the Payment API v1 scenario:
 | Label | From | To |
 |-------|------|----|
 | `HAS_VERSION` | API | API Version |
-| `CALLS` | Direct Service | API |
+| `USES_VERSION` | Direct Service | Selected API Version |
+| `DEPENDS_ON` | Indirect Service | Its actual dependency in the impact chain |
 | `OWNS` | Team | All affected services |
 
-Edges are drawn with arrows and labeled. The `DEPENDS_ON` relationship is implicit in the indirect classification — the detail panel explains why a service is affected.
+Edges are drawn with arrows and labeled. The backend returns the actual `USES_VERSION` and `DEPENDS_ON` relationships from paths up to four hops; team ownership edges are added from the team data.
 
 ## 6. Graph Visualization
 

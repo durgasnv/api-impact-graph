@@ -1,12 +1,12 @@
 # Advanced Features: Search, Filtering, Export, Critical Path
 
-## Current Checkout Status and Limits
+## Current Implementation and Limits
 
-The frontend portions described here are present in `client/src`: global search, list filtering/sorting/pagination, breadcrumbs, dependency path display, blast-radius CSV/JSON download, critical-path display, and the dashboard health indicator. These rely on REST endpoints provided by the backend. In the current working tree, the route, controller, service, database, and seed implementation files are absent, while `server/src/index.js` still imports them. As a result, these features cannot currently be verified end to end from this checkout.
+The frontend features described here are implemented in `client/src`, with matching REST handlers and database queries in `server/src`. Their end-to-end behavior depends on a reachable cognodb instance populated with the expected graph data.
 
 Global search waits 250 ms after typing, then fetches the complete API, service, and team lists and matches names in the browser. It returns at most eight results. It is not server-side search and may become inefficient for large datasets. List filters, sorting, and pagination are also performed in the browser, with 12 results per page.
 
-The blast-radius export serializes the data currently returned to the page. CSV fields are quoted, but embedded double quotes must also be doubled to be valid CSV; confirm this escaping when restoring or changing the export. The critical-path panel computes a longest chain over the graph assembled for display. The current graph builder creates a placeholder dependency edge from each indirect service to the first direct consumer, so that panel is only an estimate and should not be treated as an authoritative dependency path until the backend returns the actual relationship paths and the frontend uses them.
+Blast-radius CSV export quotes each field and doubles embedded quotes. Both export formats include affected services and their direct/indirect classification and owner, but do not export the graph edges. The critical-path panel computes a longest chain across the actual `USES_VERSION` and `DEPENDS_ON` relationships returned by the backend. Traversal is bounded by the blast-radius query's four-hop dependency limit.
 
 ## What We Added
 
@@ -20,7 +20,7 @@ Global search on dashboard, advanced filtering/sort/pagination on list pages, br
 
 ### PathExplainer showed "no path" for valid connections
 **Cause:** cognodb doesn't support `shortestPath()`. The query returned candidate paths up to depth 8, but the service layer was selecting the first result instead of the shortest.
-**Fix:** Sorted candidate paths by `pathNodes.length` in Node.js before returning. The shortest path is now always selected.
+**Fix:** Sorted candidate paths by `nodes.length` in Node.js before returning. The shortest of the returned candidates is selected.
 
 ### Critical path DFS was infinite on cyclic graphs
 **Cause:** Our seed data has no cycles, but the DFS didn't check for visited nodes. If a cycle existed (A→B→A), it would loop forever.

@@ -6,7 +6,7 @@ A full-stack web application that models APIs, services, teams, and their depend
 
 ## Checkout Status
 
-The frontend and backend entry point are present in this checkout, but the backend route, controller, service, database, middleware, and seed files referenced by `server/src/index.js` and the setup instructions are currently absent. The backend therefore cannot start as checked out, and the documented API, graph queries, and seed workflow should be treated as intended behavior until those files are restored. See `docs/1700_rest_api_layer.md` and `docs/2500_seed_data_design.md` for details.
+The backend routes, database queries, services, validation middleware, and seed script referenced by the setup instructions are present in this checkout. The backend requires a reachable cognodb instance and the connection settings below. The route and seed documentation records their intended contracts and sample-data design; verify them against your database when deploying.
 
 ---
 
