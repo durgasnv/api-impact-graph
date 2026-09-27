@@ -13,4 +13,10 @@ const BLAST_RADIUS_DIRECT_IDS = `
   RETURN collect(direct.id) AS ids
 `;
 
-module.exports = { BLAST_RADIUS, BLAST_RADIUS_DIRECT_IDS };
+const BLAST_RADIUS_PATHS = `
+  MATCH (av:APIVersion {id: $versionId})<-[:USES_VERSION]-(direct:Service)
+  OPTIONAL MATCH path = (indirect:Service)-[:DEPENDS_ON*1..4]->(direct)
+  RETURN collect(DISTINCT path) AS paths
+`;
+
+module.exports = { BLAST_RADIUS, BLAST_RADIUS_DIRECT_IDS, BLAST_RADIUS_PATHS };

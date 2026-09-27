@@ -4,7 +4,7 @@ import { fetchApiById, fetchBlastRadius, fetchAllTeams } from "../api";
 import GraphVisualization from "../components/GraphVisualization";
 import { GRAPH_COLORS } from "../graphColors";
 
-function buildGraph(apiData, version, directIds, blastServices, teamsOwnership) {
+function buildGraph(apiData, version, directIds, blastServices, teamsOwnership, relationships) {
   const nodes = [];
   const links = [];
 
@@ -16,7 +16,6 @@ function buildGraph(apiData, version, directIds, blastServices, teamsOwnership) 
     const svc = blastServices.find((x) => x.id === s);
     if (svc) {
       nodes.push({ id: svc.id, label: svc.name, type: "direct" });
-      links.push({ source: svc.id, target: version.id, label: "USES_VERSION" });
     }
   }
 
@@ -25,11 +24,17 @@ function buildGraph(apiData, version, directIds, blastServices, teamsOwnership) 
     const svc = blastServices.find((x) => x.id === s);
     if (svc) {
       nodes.push({ id: svc.id, label: svc.name, type: "indirect" });
-      // Link indirect services to direct ones that might depend on them
-      for (const d of directIds) {
-        links.push({ source: svc.id, target: d, label: "DEPENDS_ON" });
-        break; // just one link for visual clarity
-      }
+    }
+  }
+
+  const graphNodeIds = new Set(nodes.map((node) => node.id));
+  for (const relationship of relationships || []) {
+    if (graphNodeIds.has(relationship.source) && graphNodeIds.has(relationship.target)) {
+      links.push({
+        source: relationship.source,
+        target: relationship.target,
+        label: relationship.label,
+      });
     }
   }
 
@@ -231,7 +236,7 @@ function BlastRadius() {
       ? apiData.versions.find((v) => v.id === versionId)
       : apiData.versions.find((v) => v.status === "active") || apiData.versions[0];
     if (!version) return { nodes: [], links: [] };
-    return buildGraph(apiData, version, blastRadius.directIds || [], blastRadius.services, teamsOwnership);
+    return buildGraph(apiData, version, blastRadius.directIds || [], blastRadius.services, teamsOwnership, blastRadius.relationships || []);
   }, [apiData, blastRadius, teamsOwnership, versionId]);
 
   const version = useMemo(() => {
@@ -250,6 +255,7 @@ function BlastRadius() {
     if (!graphData.nodes.length || !graphData.links.length) return null;
     const adj = {};
     for (const l of graphData.links) {
+      if (l.label !== "USES_VERSION" && l.label !== "DEPENDS_ON") continue;
       const src = typeof l.source === "object" ? l.source.id : l.source;
       const tgt = typeof l.target === "object" ? l.target.id : l.target;
       if (!adj[tgt]) adj[tgt] = [];

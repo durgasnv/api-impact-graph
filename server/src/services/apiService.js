@@ -52,17 +52,42 @@ async function getBlastRadius(apiId, versionId) {
     const active = api.versions.find((v) => v.status === "active");
     resolvedVersionId = active ? active.id : api.versions[0]?.id;
   }
-  const [blastRecords, directRecords] = await Promise.all([
+  const [blastRecords, directRecords, pathRecords] = await Promise.all([
     runQuery(queries.BLAST_RADIUS, { versionId: resolvedVersionId }),
     runQuery(queries.BLAST_RADIUS_DIRECT_IDS, { versionId: resolvedVersionId }),
+    runQuery(queries.BLAST_RADIUS_PATHS, { versionId: resolvedVersionId }),
   ]);
-  if (blastRecords.length === 0) return { services: [], teams: [], directIds: [] };
+  if (blastRecords.length === 0) return { services: [], teams: [], directIds: [], relationships: [] };
   const r = blastRecords[0];
   const directIds = directRecords.length > 0 ? directRecords[0].get("ids") : [];
+  const serviceIds = new Set(r.get("services").map((service) => service.properties.id));
+  const relationships = new Map();
+  for (const id of directIds) {
+    relationships.set(`${id}->${resolvedVersionId}->USES_VERSION`, {
+      source: id,
+      target: resolvedVersionId,
+      label: "USES_VERSION",
+    });
+  }
+  const paths = pathRecords.length > 0 ? pathRecords[0].get("paths") : [];
+  for (const path of paths) {
+    if (!path) continue;
+    for (const segment of path.segments) {
+      const source = segment.start.properties.id;
+      const target = segment.end.properties.id;
+      if (!serviceIds.has(source) || !serviceIds.has(target)) continue;
+      relationships.set(`${source}->${target}->${segment.relationship.type}`, {
+        source,
+        target,
+        label: segment.relationship.type,
+      });
+    }
+  }
   return {
     services: r.get("services").map((s) => s.properties),
     teams: r.get("teams").map((t) => t.properties),
     directIds,
+    relationships: [...relationships.values()],
   };
 }
 
