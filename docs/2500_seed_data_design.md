@@ -1,5 +1,9 @@
 # Seed Data Design
 
+## Current Checkout Status
+
+The seed script is present at `server/src/seed/seed.js`. It requires the cognodb connection settings described in the README. The figures below describe the dataset it is designed to create; actual database counts may differ if the database also contains other data.
+
 ## What We Built
 
 A deterministic seed script generating 20 teams, 94 services, 70+ APIs, 112+ API versions, and 789 relationships — representing a realistic microservices ecosystem.

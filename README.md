@@ -4,6 +4,10 @@
 
 A full-stack web application that models APIs, services, teams, and their dependencies as a graph, enabling engineers to explore blast radius, dependency chains, and team ownership when an API or service changes.
 
+## Checkout Status
+
+The backend routes, database queries, services, validation middleware, and seed script referenced by the setup instructions are present in this checkout. The backend requires a reachable cognodb instance and the connection settings below. The route and seed documentation records their intended contracts and sample-data design; verify them against your database when deploying.
+
 ---
 
 ## Use Case
@@ -90,12 +94,13 @@ Edit `server/.env`:
 | `COGNODB_URI` | Bolt connection URI | `bolt+s://db-xxx.databases.cognodb.com` |
 | `COGNODB_USERNAME` | Database username | `cognodb` |
 | `COGNODB_PASSWORD` | Database password | (your password) |
+| `CLIENT_URL` | Allowed frontend origin(s) for cross-origin deployments; comma-separated if needed | `https://your-frontend.example.com` |
 
 ### Seed Data
 
 ```bash
 cd server
-node seed/seed.js
+node src/seed/seed.js
 ```
 
 Creates 20 teams, 94 services, 70+ APIs, 112 API versions, and 789 relationships. Idempotent — safe to re-run.

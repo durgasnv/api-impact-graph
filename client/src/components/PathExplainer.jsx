@@ -21,18 +21,18 @@ function PathExplainer({ sourceId, targetId, sourceName, targetName }) {
 
   if (loading) return <LoadingSpinner />;
   if (error) return <p className="empty-text">{error}</p>;
-  if (!path || !path.pathNodes || path.pathNodes.length === 0) {
+  if (!path || !path.nodes || path.nodes.length === 0) {
     return <p className="empty-text">No dependency path found.</p>;
   }
 
   return (
     <div className="path-explainer">
       <p className="path-explainer-title">
-        Dependency path from <strong>{sourceName}</strong> to <strong>{targetName}</strong>:
+        Dependency path from <strong>{targetName}</strong> to <strong>{sourceName}</strong>:
       </p>
       <ol className="path-steps">
-        {path.pathNodes.map((node, i) => {
-          const rel = path.pathRels[i];
+        {path.nodes.map((node, i) => {
+          const rel = path.relationships[i];
           return (
             <li key={i} className="path-step">
               <span className={`path-node path-node-${node.label.toLowerCase()}`}>

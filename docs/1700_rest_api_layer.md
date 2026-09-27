@@ -1,5 +1,9 @@
 # REST API Layer
 
+## Current Checkout Status
+
+The route, controller, service, query, and validation files described below are present in this checkout. The backend still requires a reachable cognodb instance and valid connection settings to start. The path endpoint responds with `nodes` and `relationships`; the frontend path explorer consumes those fields.
+
 ## 1. Architecture
 
 ```
@@ -43,7 +47,7 @@ server/src/
 | GET | `/api/apis` | All APIs with versions | 200 |
 | GET | `/api/apis/:id` | Single API with versions | 200, 400, 404 |
 | GET | `/api/apis/:id/consumers` | Services that directly call the API | 200, 400 |
-| GET | `/api/apis/:id/blast-radius` | Direct + indirect affected services and teams | 200, 400, 404 |
+| GET | `/api/apis/:id/blast-radius` | Direct + indirect affected services, teams, and graph relationships | 200, 400, 404 |
 | GET | `/api/services` | All services | 200 |
 | GET | `/api/services/:id` | Service with team, APIs, dependencies | 200, 400, 404 |
 | GET | `/api/services/:id/dependencies` | All downstream dependents (1-4 hops) | 200, 400 |
@@ -65,7 +69,7 @@ Invalid IDs return HTTP 400 with `{"error": "Invalid ID parameter"}`.
 | Scenario | HTTP | Response |
 |----------|------|----------|
 | Invalid ID parameter | 400 | `{"error": "Invalid ID parameter"}` |
-| Resource not found | 404 | `{"error": "API not found"}` |
+| Resource not found | 404 | `{"error": "API not found"}` or `{"error": "API or version not found"}` for blast radius |
 | No dependency path exists | 404 | `{"error": "No path found"}` |
 | Database error | 500 | `{"error": "Internal server error"}` |
 
@@ -96,7 +100,7 @@ No session leaks. No persistent sessions across requests.
 
 Without `versionId`: the service selects the active version, falling back to the first version.
 
-With `versionId`: computes blast radius for that specific version.
+With `versionId`: computes blast radius only if that version belongs to the requested API. Unknown APIs and versions that do not belong to that API return 404.
 
 Verified against cognodb:
 
@@ -108,21 +112,20 @@ Verified against cognodb:
 
 `GET /api/services/:id/paths/:targetId`
 
-- `:id` is the starting service (source).
-- `:targetId` is the destination.
+- `:id` is the service whose downstream dependents are being explored.
+- `:targetId` is a selected downstream dependent. Because `DEPENDS_ON` points from dependent to dependency, the returned path runs from `:targetId` back to `:id`, matching the stored edge direction.
 
-The Cypher query returns up to 10 candidate paths. The service layer sorts by `pathNodes.length` and returns the shortest.
+The Cypher query returns up to 10 candidate paths. The service layer sorts by `nodes.length` and returns the shortest path as `{ nodes, relationships }`.
 
-### Q-05 Fix
+### Q-05 Direction
 
-The implementation plan's original Cypher had the traversal direction reversed:
+The service page starts with an origin service and lets the user choose one of its downstream dependents. Since edges point from dependent to dependency, Cypher traverses from the selected dependent back to the origin:
 
 ```
-(target)-[:...]->(source)   ← plan had this (wrong direction)
-(source)-[:...]->(target)   ← fixed to this
+(target)-[:DEPENDS_ON*1..4]->(source)
 ```
 
-Graph edges go `cart-service → checkout-service → payment-api`. The original query traversed from `payment-api` to `cart-service` using forward relationship types, which found nothing. The fix traverses from source to target, matching the actual edge directions.
+For example, if Cart Service depends on Checkout Service, the stored edge is `Cart Service → Checkout Service`. Exploring Checkout Service's downstream dependents returns the path from Cart Service back to Checkout Service, preserving that stored direction.
 
 ## 9. Record Transformation
 

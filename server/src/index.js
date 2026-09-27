@@ -12,7 +12,11 @@ const dashboardRoutes = require("./routes/dashboard");
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin(origin, callback) {
+    callback(null, !origin || config.clientOrigins.includes(origin));
+  },
+}));
 app.use(express.json());
 
 app.use("/api", healthRoutes);

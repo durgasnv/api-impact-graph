@@ -53,7 +53,7 @@ server/src/
     driver.js       — Singleton Neo4j driver
     queries/        — Named Cypher query strings
   seed/
-    seed.js         — Repeatable seed script
+    seed.js         — Repeatable seed script at `server/src/seed/seed.js`
 ```
 
 **Key design decisions:**

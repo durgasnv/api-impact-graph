@@ -1,5 +1,13 @@
 # Advanced Features: Search, Filtering, Export, Critical Path
 
+## Current Implementation and Limits
+
+The frontend features described here are implemented in `client/src`, with matching REST handlers and database queries in `server/src`. Their end-to-end behavior depends on a reachable cognodb instance populated with the expected graph data.
+
+Global search waits 250 ms after typing, then fetches the complete API, service, and team lists and matches names in the browser. It returns at most eight results. It is not server-side search and may become inefficient for large datasets. List filters, sorting, and pagination are also performed in the browser, with 12 results per page.
+
+Blast-radius CSV export quotes each field and doubles embedded quotes. Both export formats include affected services and their direct/indirect classification and owner, but do not export the graph edges. The critical-path panel computes a longest chain across the actual `USES_VERSION` and `DEPENDS_ON` relationships returned by the backend. Traversal is bounded by the blast-radius query's four-hop dependency limit.
+
 ## What We Added
 
 Global search on dashboard, advanced filtering/sort/pagination on list pages, breadcrumbs on detail pages, PathExplainer for dependency paths, CSV/JSON export for blast radius, critical path highlighting, and a DB health indicator.
@@ -12,7 +20,7 @@ Global search on dashboard, advanced filtering/sort/pagination on list pages, br
 
 ### PathExplainer showed "no path" for valid connections
 **Cause:** cognodb doesn't support `shortestPath()`. The query returned candidate paths up to depth 8, but the service layer was selecting the first result instead of the shortest.
-**Fix:** Sorted candidate paths by `pathNodes.length` in Node.js before returning. The shortest path is now always selected.
+**Fix:** Sorted candidate paths by `nodes.length` in Node.js before returning. The shortest of the returned candidates is selected.
 
 ### Critical path DFS was infinite on cyclic graphs
 **Cause:** Our seed data has no cycles, but the DFS didn't check for visited nodes. If a cycle existed (A→B→A), it would loop forever.
