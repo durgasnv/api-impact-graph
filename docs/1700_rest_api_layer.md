@@ -47,7 +47,7 @@ server/src/
 | GET | `/api/apis` | All APIs with versions | 200 |
 | GET | `/api/apis/:id` | Single API with versions | 200, 400, 404 |
 | GET | `/api/apis/:id/consumers` | Services that directly call the API | 200, 400 |
-| GET | `/api/apis/:id/blast-radius` | Direct + indirect affected services and teams | 200, 400, 404 |
+| GET | `/api/apis/:id/blast-radius` | Direct + indirect affected services, teams, and graph relationships | 200, 400, 404 |
 | GET | `/api/services` | All services | 200 |
 | GET | `/api/services/:id` | Service with team, APIs, dependencies | 200, 400, 404 |
 | GET | `/api/services/:id/dependencies` | All downstream dependents (1-4 hops) | 200, 400 |
@@ -69,7 +69,7 @@ Invalid IDs return HTTP 400 with `{"error": "Invalid ID parameter"}`.
 | Scenario | HTTP | Response |
 |----------|------|----------|
 | Invalid ID parameter | 400 | `{"error": "Invalid ID parameter"}` |
-| Resource not found | 404 | `{"error": "API not found"}` |
+| Resource not found | 404 | `{"error": "API not found"}` or `{"error": "API or version not found"}` for blast radius |
 | No dependency path exists | 404 | `{"error": "No path found"}` |
 | Database error | 500 | `{"error": "Internal server error"}` |
 
@@ -100,7 +100,7 @@ No session leaks. No persistent sessions across requests.
 
 Without `versionId`: the service selects the active version, falling back to the first version.
 
-With `versionId`: computes blast radius for that specific version.
+With `versionId`: computes blast radius only if that version belongs to the requested API. Unknown APIs and versions that do not belong to that API return 404.
 
 Verified against cognodb:
 

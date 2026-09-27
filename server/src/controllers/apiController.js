@@ -39,7 +39,7 @@ async function getBlastRadius(req, res) {
       req.params.id,
       req.query.versionId
     );
-    if (!result) return res.status(404).json({ error: "API not found" });
+    if (!result) return res.status(404).json({ error: "API or version not found" });
     res.json(result);
   } catch (err) {
     handleError(res, err, "getBlastRadius");

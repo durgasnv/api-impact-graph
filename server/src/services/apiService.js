@@ -45,13 +45,18 @@ async function getDirectConsumers(apiId) {
 }
 
 async function getBlastRadius(apiId, versionId) {
-  let resolvedVersionId = versionId;
-  if (!resolvedVersionId) {
-    const api = await getApiById(apiId);
-    if (!api) return null;
+  const api = await getApiById(apiId);
+  if (!api) return null;
+
+  let resolvedVersionId;
+  if (versionId) {
+    if (!api.versions.some((version) => version.id === versionId)) return null;
+    resolvedVersionId = versionId;
+  } else {
     const active = api.versions.find((v) => v.status === "active");
     resolvedVersionId = active ? active.id : api.versions[0]?.id;
   }
+  if (!resolvedVersionId) return { services: [], teams: [], directIds: [], relationships: [] };
   const [blastRecords, directRecords, pathRecords] = await Promise.all([
     runQuery(queries.BLAST_RADIUS, { versionId: resolvedVersionId }),
     runQuery(queries.BLAST_RADIUS_DIRECT_IDS, { versionId: resolvedVersionId }),
