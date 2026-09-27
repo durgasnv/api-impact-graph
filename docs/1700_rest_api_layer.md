@@ -2,7 +2,11 @@
 
 ## Current Checkout Status
 
+<<<<<<< Updated upstream
 The route, controller, service, query, and validation files described below are present in this checkout. The backend still requires a reachable cognodb instance and valid connection settings to start. The path endpoint responds with `nodes` and `relationships`; the frontend path explorer consumes those fields.
+=======
+This document describes the REST API and backend design. The implementation files it names under `server/src/routes/`, `server/src/controllers/`, `server/src/services/`, `server/src/db/`, and `server/src/middleware/` are all present, and `server/src/index.js` imports and mounts them. The endpoint details below document working code and can be verified against a running instance.
+>>>>>>> Stashed changes
 
 ## 1. Architecture
 

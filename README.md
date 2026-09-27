@@ -6,7 +6,11 @@ A full-stack web application that models APIs, services, teams, and their depend
 
 ## Checkout Status
 
+<<<<<<< Updated upstream
 The backend routes, database queries, services, validation middleware, and seed script referenced by the setup instructions are present in this checkout. The backend requires a reachable cognodb instance and the connection settings below. The route and seed documentation records their intended contracts and sample-data design; verify them against your database when deploying.
+=======
+The backend is complete in this checkout. `server/src/index.js` wires up the route, controller, service, database, middleware, and seed files that all exist under `server/src/`, so the API, graph queries, and seed workflow below describe working code rather than intended design. See `docs/1700_rest_api_layer.md` and `docs/2500_seed_data_design.md` for details.
+>>>>>>> Stashed changes
 
 ---
 
@@ -100,7 +104,11 @@ Edit `server/.env`:
 
 ```bash
 cd server
+<<<<<<< Updated upstream
 node src/seed/seed.js
+=======
+npm run seed
+>>>>>>> Stashed changes
 ```
 
 Creates 20 teams, 94 services, 70+ APIs, 112 API versions, and 789 relationships. Idempotent — safe to re-run.

@@ -2,7 +2,11 @@
 
 ## Current Checkout Status
 
+<<<<<<< Updated upstream
 The seed script is present at `server/src/seed/seed.js`. It requires the cognodb connection settings described in the README. The figures below describe the dataset it is designed to create; actual database counts may differ if the database also contains other data.
+=======
+The seed design and figures below document the sample dataset this project generates. The script `server/src/seed/seed.js` is present and runnable via `npm run seed` from `server/`, so the documented dataset can be created against any reachable database. It wipes existing nodes with `MATCH (n) DETACH DELETE n` before writing, so point it only at a database you intend to repopulate.
+>>>>>>> Stashed changes
 
 ## What We Built
 

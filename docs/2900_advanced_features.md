@@ -2,7 +2,11 @@
 
 ## Current Implementation and Limits
 
+<<<<<<< Updated upstream
 The frontend features described here are implemented in `client/src`, with matching REST handlers and database queries in `server/src`. Their end-to-end behavior depends on a reachable cognodb instance populated with the expected graph data.
+=======
+The frontend portions described here are present in `client/src`: global search, list filtering/sorting/pagination, breadcrumbs, dependency path display, blast-radius CSV/JSON download, critical-path display, and the dashboard health indicator. These rely on REST endpoints provided by the backend, whose route, controller, service, database, and seed files are all present under `server/src/` and mounted by `server/src/index.js`. These features can therefore be exercised end to end against a running instance.
+>>>>>>> Stashed changes
 
 Global search waits 250 ms after typing, then fetches the complete API, service, and team lists and matches names in the browser. It returns at most eight results. It is not server-side search and may become inefficient for large datasets. List filters, sorting, and pagination are also performed in the browser, with 12 results per page.
 
