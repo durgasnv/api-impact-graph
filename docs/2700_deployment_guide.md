@@ -50,7 +50,7 @@ Set `CLIENT_URL` on the server to the frontend origin. The backend allows that o
 
 ### Server crashed on cold start
 **Cause:** cognodb connection timeout during the warm-up query.
-**Fix:** Added retry logic with 3 attempts and exponential backoff on the warm-up query.
+**Current behavior:** The server runs one warm-up query before listening and exits if the database connection fails. It does not currently retry; confirm the database URI and availability, then restart the service.
 
 ## What We Learned
 

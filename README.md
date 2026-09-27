@@ -94,6 +94,7 @@ Edit `server/.env`:
 | `COGNODB_URI` | Bolt connection URI | `bolt+s://db-xxx.databases.cognodb.com` |
 | `COGNODB_USERNAME` | Database username | `cognodb` |
 | `COGNODB_PASSWORD` | Database password | (your password) |
+| `CLIENT_URL` | Allowed frontend origin(s) for cross-origin deployments; comma-separated if needed | `https://your-frontend.example.com` |
 
 ### Seed Data
 
