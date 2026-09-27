@@ -28,7 +28,7 @@ function PathExplainer({ sourceId, targetId, sourceName, targetName }) {
   return (
     <div className="path-explainer">
       <p className="path-explainer-title">
-        Dependency path from <strong>{sourceName}</strong> to <strong>{targetName}</strong>:
+        Dependency path from <strong>{targetName}</strong> to <strong>{sourceName}</strong>:
       </p>
       <ol className="path-steps">
         {path.nodes.map((node, i) => {

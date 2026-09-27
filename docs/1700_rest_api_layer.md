@@ -112,21 +112,20 @@ Verified against cognodb:
 
 `GET /api/services/:id/paths/:targetId`
 
-- `:id` is the starting service (source).
-- `:targetId` is the destination.
+- `:id` is the service whose downstream dependents are being explored.
+- `:targetId` is a selected downstream dependent. Because `DEPENDS_ON` points from dependent to dependency, the returned path runs from `:targetId` back to `:id`, matching the stored edge direction.
 
 The Cypher query returns up to 10 candidate paths. The service layer sorts by `nodes.length` and returns the shortest path as `{ nodes, relationships }`.
 
-### Q-05 Fix
+### Q-05 Direction
 
-The implementation plan's original Cypher had the traversal direction reversed:
+The service page starts with an origin service and lets the user choose one of its downstream dependents. Since edges point from dependent to dependency, Cypher traverses from the selected dependent back to the origin:
 
 ```
-(target)-[:...]->(source)   ← plan had this (wrong direction)
-(source)-[:...]->(target)   ← fixed to this
+(target)-[:DEPENDS_ON*1..4]->(source)
 ```
 
-Graph edges go `cart-service → checkout-service → payment-api`. The original query traversed from `payment-api` to `cart-service` using forward relationship types, which found nothing. The fix traverses from source to target, matching the actual edge directions.
+For example, if Cart Service depends on Checkout Service, the stored edge is `Cart Service → Checkout Service`. Exploring Checkout Service's downstream dependents returns the path from Cart Service back to Checkout Service, preserving that stored direction.
 
 ## 9. Record Transformation
 
