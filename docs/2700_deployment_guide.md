@@ -28,6 +28,7 @@ Containerize everything. Works anywhere.
 | `COGNODB_USERNAME` | server | `cognodb` |
 | `COGNODB_PASSWORD` | server | (secret) |
 | `PORT` | server | `3001` |
+| `CLIENT_URL` | server | `https://your-frontend.example.com` (comma-separated origins are supported) |
 
 ## Production Build
 
@@ -45,8 +46,7 @@ The Express server serves `client/dist/` as static files with SPA fallback.
 **Fix:** Moved the server to Render (persistent Node.js process) instead of Vercel serverless. cognodb requires persistent connections.
 
 ### CORS blocked requests in production
-**Cause:** Frontend on `vercel.app`, server on `render.com` — different origins.
-**Fix:** Added CORS configuration: `cors({ origin: process.env.CLIENT_URL || "*" })`.
+Set `CLIENT_URL` on the server to the frontend origin. The backend allows that origin (or a comma-separated list of origins) and requests without an `Origin` header. The default is `http://localhost:5173` for local Vite development.
 
 ### Server crashed on cold start
 **Cause:** cognodb connection timeout during the warm-up query.
@@ -56,5 +56,5 @@ The Express server serves `client/dist/` as static files with SPA fallback.
 
 - cognodb (Bolt protocol) needs persistent TCP connections — serverless platforms don't work well
 - Static frontend + persistent backend is the natural split for graph database apps
-- CORS must be configured for cross-origin deployments — `*` works for demos, restrict in production
+- CORS must be configured for cross-origin deployments; only configured frontend origins receive CORS permission
 - Always test the full deployment chain locally before pushing — environment differences cause most deployment failures
