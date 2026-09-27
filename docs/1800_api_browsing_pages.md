@@ -58,7 +58,7 @@ Displays:
 
 ### Version Replacement
 
-Backend returns `replacedBy` in the version data. The component builds a lookup map and displays "Replaced by Payment API v2.0.0" below the deprecated version.
+The API queries return each version's `replacedBy` ID from its `REPLACED_BY` relationship. The component displays the replacement version below the old version.
 
 ### Consumer List
 

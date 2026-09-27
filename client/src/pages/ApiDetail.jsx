@@ -33,11 +33,6 @@ function ApiDetail() {
   if (error) return <ErrorBanner message={error} />;
   if (!apiData) return null;
 
-  const replacementMap = {};
-  apiData.versions.forEach((v) => {
-    if (v.replacedBy) replacementMap[v.replacedBy] = v.id;
-  });
-
   return (
     <div className="page">
       <Breadcrumbs items={[
@@ -59,7 +54,7 @@ function ApiDetail() {
         ) : (
           <div className="version-list">
             {apiData.versions.map((v) => {
-              const replacedBy = replacementMap[v.id];
+              const replacedBy = v.replacedBy;
               return (
                 <div key={v.id} className="version-item">
                   <div className="version-item-main">

@@ -10,6 +10,15 @@ function recordsToProps(records, key) {
   return records.map((r) => r.get(key).properties);
 }
 
+function apiVersionsFromRecord(record) {
+  return record.get("versions")
+    .filter((entry) => entry.version)
+    .map((entry) => ({
+      ...entry.version.properties,
+      replacedBy: entry.replacedBy || null,
+    }));
+}
+
 async function runQuery(cypher, params) {
   const driver = getDriver();
   const session = driver.session();
@@ -25,7 +34,7 @@ async function getAllApis() {
   const records = await runQuery(queries.GET_ALL_APIS);
   return records.map((r) => ({
     ...r.get("a").properties,
-    versions: r.get("versions").map((v) => v.properties),
+    versions: apiVersionsFromRecord(r),
   }));
 }
 
@@ -35,7 +44,7 @@ async function getApiById(id) {
   const r = records[0];
   return {
     ...r.get("a").properties,
-    versions: r.get("versions").map((v) => v.properties),
+    versions: apiVersionsFromRecord(r),
   };
 }
 
