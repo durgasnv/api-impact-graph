@@ -36,11 +36,10 @@ Variable-length patterns (`[:DEPENDS_ON*1..4]`), `collect()`, `count()`, `OPTION
 
 ## 5. Blast Radius Traversal (Q-04)
 
-The core query:
+The base blast-radius query:
 
 ```cypher
-MATCH (av:APIVersion {id: $versionId})
-MATCH (av)<-[:HAS_VERSION]-(a:API)<-[:CALLS]-(direct:Service)
+MATCH (av:APIVersion {id: $versionId})<-[:USES_VERSION]-(direct:Service)
 OPTIONAL MATCH (indirect:Service)-[:DEPENDS_ON*1..4]->(direct)
 WITH collect(DISTINCT direct) + collect(DISTINCT indirect) AS allServices
 UNWIND allServices AS svc
@@ -51,11 +50,12 @@ RETURN collect(DISTINCT svc) AS services,
 
 **What it does:**
 1. Starts from the selected API version.
-2. Walks back to the parent API via `HAS_VERSION`.
-3. Follows incoming `CALLS` to find direct consumer services.
-4. From each direct consumer, follows incoming `DEPENDS_ON` chains (1-4 hops) to find indirectly affected services.
+2. Follows incoming `USES_VERSION` to find direct consumer services.
+3. From each direct consumer, follows incoming `DEPENDS_ON` chains (1-4 hops) to find indirectly affected services.
 5. Collects all affected services (deduplicated).
 6. Resolves owning teams.
+
+The backend also runs companion queries to return direct service IDs and the actual `USES_VERSION` and `DEPENDS_ON` relationships used by the blast-radius graph.
 
 **Verified result (Payment API v1):**
 - Direct: Order Service, Checkout Service
@@ -67,13 +67,12 @@ RETURN collect(DISTINCT svc) AS services,
 Q-05 cannot use `shortestPath()` on cognodb. Instead it returns candidate paths:
 
 ```cypher
-MATCH path = (target {id: $targetId})-[:DEPENDS_ON|CALLS|HAS_VERSION|REPLACED_BY*1..8]->(source {id: $sourceId})
-RETURN [n IN nodes(path) | {id: n.id, label: labels(n)[0]}] AS pathNodes,
-       [r IN relationships(path) | type(r)] AS pathRels
+MATCH path = (target {id: $targetId})-[:DEPENDS_ON|CALLS|USES_VERSION|HAS_VERSION|REPLACED_BY*1..4]->(source {id: $sourceId})
+RETURN path
 LIMIT 10
 ```
 
-The Node.js service layer selects the shortest candidate by `pathNodes.length`. This keeps all Cypher cognodb-compatible while still delivering the shortest path to the client.
+The service page supplies the current service as `$sourceId` and a downstream dependent as `$targetId`. Because edges point from a dependent toward what it depends on, the stored path runs from the dependent back to the current service. The Node.js service layer selects the shortest of up to 10 candidate paths and returns `{ nodes, relationships }`. Search depth is limited to four relationships.
 
 ## 7. Dashboard Query (Q-08)
 
@@ -88,6 +87,8 @@ WITH apiCount, count(s) AS serviceCount
 ```
 
 ## 8. Verified Counts
+
+These counts came from an earlier small verification dataset; the current deterministic seed design is documented in `docs/2500_seed_data_design.md`.
 
 | Metric | Count |
 |--------|-------|
