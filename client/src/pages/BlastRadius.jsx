@@ -280,7 +280,9 @@ function BlastRadius() {
       const team = teamsOwnership.find((t) => t.services.some((x) => x.id === s.id));
       rows.push([s.name, type, s.status || "active", team?.name || ""]);
     }
-    const csv = rows.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+    const csv = rows
+      .map((row) => row.map((value) => `"${String(value ?? "").replace(/"/g, '""')}"`).join(","))
+      .join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
